@@ -1,0 +1,15 @@
+name: chord_pro
+description: Library for parsing chordpro song format
+version: 0.1.0
+repository: https://github.com/ryzizub/chord_pro
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  collection: ^1.19.1
+
+dev_dependencies:
+  test: ^1.25.8
+  very_good_analysis: ^6.0.0
+
