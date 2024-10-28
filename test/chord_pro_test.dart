@@ -5,8 +5,9 @@ import 'utils/utils.dart';
 
 void main() {
   group('Chordpro', () {
-    test('parse metadata', () async {
+    test('parse example song', () async {
       final song = ChordPro.parseSong(getTestSongBody());
+      expect(song.preamble, null);
       expect(song.metadata?.title, "Knockin' on Heaven's Door");
     });
   });

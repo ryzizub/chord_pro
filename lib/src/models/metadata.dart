@@ -1,5 +1,7 @@
+import 'package:chord_pro/src/models/directive.dart';
+
 /// The entry point of the Metada
-class Metadata {
+class Metadata with DirectiveMixin<Metadata> {
   /// Holds info the song like [title] etc.
   Metadata({
     this.title,
@@ -17,4 +19,11 @@ class Metadata {
 
   /// The title of the song
   final String? title;
+
+  @override
+  bool isEmpty() {
+    return [
+      title,
+    ].nonNulls.isEmpty;
+  }
 }
