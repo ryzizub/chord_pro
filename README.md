@@ -20,7 +20,7 @@ import 'package:chord_pro/chord_pro.dart';
 
 [license_badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [license_link]: https://opensource.org/licenses/MIT
-[pub_package_badge]: https://img.shields.io/pub/v/http.svg
+[pub_package_badge]: https://img.shields.io/pub/v/chord_pro.svg
 [pub_package_link]: https://pub.dev/packages/chord_pro
 [very_good_analysis_badge]: https://img.shields.io/badge/style-very_good_analysis-B22C89.svg
 [very_good_analysis_link]: https://pub.dev/packages/very_good_analysis
