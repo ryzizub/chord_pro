@@ -10,8 +10,8 @@ class ChordPro {
   static Song parseSong(String song) {
     final directiveMap = directiveParse(song);
 
-    final preamble = Preamble.fromMap(directiveMap);
-    final metadada = Metadata.fromMap(directiveMap);
+    final preamble = Preamble.fromDirectiveMap(directiveMap);
+    final metadada = Metadata.fromDirectiveMap(directiveMap);
     return Song(
       preamble: preamble.value,
       metadata: metadada.value,

@@ -9,7 +9,7 @@ class Preamble with DirectiveMixin<Preamble> {
 
   /// Creates instance of [Preamble] from created map of already
   /// parsed content of Chordpro
-  factory Preamble.fromMap(Map<String, String?> map) {
+  factory Preamble.fromDirectiveMap(Map<String, List<String>> map) {
     final newSong = (map['new_song'] ?? map['ns']) != null;
 
     return Preamble(

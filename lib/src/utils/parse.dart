@@ -1,26 +1,21 @@
 import 'package:chord_pro/src/utils/constants.dart';
 
 /// Retrieves key-value directives from the song
-Map<String, String?> directiveParse(String chordProText) {
+Map<String, List<String>> directiveParse(String chordProText) {
   final matches = directiveRegExp.allMatches(chordProText);
 
-  final pairs = matches.map(
-    (match) {
-      if (match.groupCount == 0) {
-        return null;
-      }
+  final directives = <String, List<String>>{};
 
-      final key = match.group(1)!.trim().toLowerCase();
+  for (final match in matches) {
+    final key = match.group(1)!.trim().toLowerCase();
+    final value = match.group(2)?.trim();
 
-      if (match.groupCount == 1) {
-        return MapEntry(key, null);
-      }
+    if (directives.containsKey(key)) {
+      directives[key]!.add(value ?? '');
+    } else {
+      directives[key] = [value ?? ''];
+    }
+  }
 
-      final value = match.group(2)!.trim();
-
-      return MapEntry(key, value);
-    },
-  ).nonNulls;
-
-  return Map.fromEntries(pairs);
+  return directives;
 }
