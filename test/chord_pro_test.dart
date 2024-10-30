@@ -8,7 +8,8 @@ void main() {
     test('parse example song', () async {
       final song = ChordPro.parseSong(getTestSongBody());
       expect(song.preamble, null);
-      expect(song.metadata?.title, "Knockin' on Heaven's Door");
+      expect(song.metadata?.title, ["Knockin' on Heaven's Door"]);
+      expect(song.metadata?.artist, ['Bob Dylan']);
     });
   });
 }
