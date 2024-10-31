@@ -1,7 +1,8 @@
+import 'package:chord_pro/src/models/copyright.dart';
 import 'package:chord_pro/src/models/directive.dart';
 import 'package:collection/collection.dart';
 
-/// The entry point of the Metada
+/// The entry point of the [Metadata]
 class Metadata with DirectiveMixin<Metadata> {
   /// Holds info the song like [title] etc.
   Metadata({
@@ -10,6 +11,8 @@ class Metadata with DirectiveMixin<Metadata> {
     this.subtitle,
     this.artist,
     this.composer,
+    this.lyricist,
+    this.copyright,
   });
 
   /// Creates instance of [Metadata] from created map of already
@@ -20,6 +23,12 @@ class Metadata with DirectiveMixin<Metadata> {
     final subtitle = _retrieveMetaValue(map, ['sorttitle'])?.firstOrNull;
     final artist = _retrieveMetaValue(map, ['artist']);
     final composer = _retrieveMetaValue(map, ['composer']);
+    final lyricist = _retrieveMetaValue(map, ['lyricist']);
+
+    final copyrightContent = _retrieveMetaValue(map, ['copyright']);
+    final copyright = copyrightContent != null
+        ? Copyright.fromString(copyrightContent.first)
+        : null;
 
     return Metadata(
       title: title,
@@ -27,6 +36,8 @@ class Metadata with DirectiveMixin<Metadata> {
       subtitle: subtitle,
       artist: artist,
       composer: composer,
+      lyricist: lyricist,
+      copyright: copyright,
     );
   }
 
@@ -45,6 +56,12 @@ class Metadata with DirectiveMixin<Metadata> {
   /// The composer behind the song
   final List<String>? composer;
 
+  /// The composer behind the song
+  final List<String>? lyricist;
+
+  /// The copyright of the song
+  final Copyright? copyright;
+
   @override
   bool isEmpty() {
     return [
@@ -53,6 +70,8 @@ class Metadata with DirectiveMixin<Metadata> {
       subtitle,
       artist?.isEmpty,
       composer?.isEmpty,
+      lyricist?.isEmpty,
+      copyright,
     ].nonNulls.isEmpty;
   }
 }

@@ -1,6 +1,6 @@
 import 'package:chord_pro/src/models/directive.dart';
 
-/// The entry point of the Preamble
+/// The entry point of the [Preamble]
 class Preamble with DirectiveMixin<Preamble> {
   /// Holds preamble info the song like [newSong] etc.
   Preamble({
