@@ -1,0 +1,206 @@
+import 'package:chord_pro/src/directive/directive.dart';
+
+/// Structured metadata collected from a song's directives.
+///
+/// Every field has a safe empty default so callers can read without
+/// null-guarding. Unknown or user-defined metadata lands in [other].
+class Metadata {
+  /// Creates a new [Metadata].
+  const Metadata({
+    this.titles = const [],
+    this.sortTitle,
+    this.subtitles = const [],
+    this.artists = const [],
+    this.composers = const [],
+    this.lyricists = const [],
+    this.copyright,
+    this.album,
+    this.year,
+    this.key,
+    this.time,
+    this.tempo,
+    this.duration,
+    this.capo,
+    this.other = const {},
+  });
+
+  /// Titles (`{title}` / `{t}`). A song may declare more than one.
+  final List<String> titles;
+
+  /// Sort title (`{sorttitle}`).
+  final String? sortTitle;
+
+  /// Subtitles (`{subtitle}` / `{st}`).
+  final List<String> subtitles;
+
+  /// Performing artists (`{artist}`).
+  final List<String> artists;
+
+  /// Composers (`{composer}`).
+  final List<String> composers;
+
+  /// Lyricists (`{lyricist}`).
+  final List<String> lyricists;
+
+  /// Copyright string, stored verbatim.
+  final String? copyright;
+
+  /// Album name.
+  final String? album;
+
+  /// Publication year.
+  final int? year;
+
+  /// Song key (e.g. `"C"`, `"Am"`).
+  final String? key;
+
+  /// Time signature (e.g. `"4/4"`).
+  final String? time;
+
+  /// Tempo in BPM.
+  final int? tempo;
+
+  /// Duration string (spec-free; e.g. `"3:42"`).
+  final String? duration;
+
+  /// Capo fret number.
+  final int? capo;
+
+  /// Unknown / custom metadata. Keys are lowercased.
+  final Map<String, List<String>> other;
+
+  /// Whether no metadata fields were populated.
+  bool get isEmpty =>
+      titles.isEmpty &&
+      sortTitle == null &&
+      subtitles.isEmpty &&
+      artists.isEmpty &&
+      composers.isEmpty &&
+      lyricists.isEmpty &&
+      copyright == null &&
+      album == null &&
+      year == null &&
+      key == null &&
+      time == null &&
+      tempo == null &&
+      duration == null &&
+      capo == null &&
+      other.isEmpty;
+}
+
+/// Known metadata directive names plus their short-form aliases.
+///
+/// Kept internal — callers read [Metadata] fields instead.
+const Map<String, String> _metadataAliases = {
+  't': 'title',
+  'st': 'subtitle',
+};
+
+const Set<String> _listMetadataNames = {
+  'title',
+  'subtitle',
+  'artist',
+  'composer',
+  'lyricist',
+};
+
+const Set<String> _intMetadataNames = {'year', 'tempo', 'capo'};
+
+const Set<String> _scalarMetadataNames = {
+  'sorttitle',
+  'copyright',
+  'album',
+  'key',
+  'time',
+  'duration',
+};
+
+/// Reduces a stream of [Directive]s into a typed [Metadata].
+///
+/// Directives whose name is not recognised as metadata are ignored; the
+/// assembler is responsible for passing only metadata-bearing directives
+/// (including those desugared from `{meta: key value}`).
+Metadata reduceMetadata(Iterable<Directive> directives) {
+  final titles = <String>[];
+  final subtitles = <String>[];
+  final artists = <String>[];
+  final composers = <String>[];
+  final lyricists = <String>[];
+  final other = <String, List<String>>{};
+  String? sortTitle;
+  String? copyright;
+  String? album;
+  int? year;
+  String? key;
+  String? time;
+  int? tempo;
+  String? duration;
+  int? capo;
+
+  for (final d in directives) {
+    final name = _metadataAliases[d.name] ?? d.name;
+    final value = d.value;
+    if (value == null) continue;
+
+    if (_listMetadataNames.contains(name)) {
+      switch (name) {
+        case 'title':
+          titles.add(value);
+        case 'subtitle':
+          subtitles.add(value);
+        case 'artist':
+          artists.add(value);
+        case 'composer':
+          composers.add(value);
+        case 'lyricist':
+          lyricists.add(value);
+      }
+    } else if (_scalarMetadataNames.contains(name)) {
+      switch (name) {
+        case 'sorttitle':
+          sortTitle = value;
+        case 'copyright':
+          copyright = value;
+        case 'album':
+          album = value;
+        case 'key':
+          key = value;
+        case 'time':
+          time = value;
+        case 'duration':
+          duration = value;
+      }
+    } else if (_intMetadataNames.contains(name)) {
+      final n = int.tryParse(value);
+      if (n == null) continue;
+      switch (name) {
+        case 'year':
+          year = n;
+        case 'tempo':
+          tempo = n;
+        case 'capo':
+          capo = n;
+      }
+    } else {
+      (other[name] ??= []).add(value);
+    }
+  }
+
+  return Metadata(
+    titles: titles,
+    sortTitle: sortTitle,
+    subtitles: subtitles,
+    artists: artists,
+    composers: composers,
+    lyricists: lyricists,
+    copyright: copyright,
+    album: album,
+    year: year,
+    key: key,
+    time: time,
+    tempo: tempo,
+    duration: duration,
+    capo: capo,
+    other: other,
+  );
+}

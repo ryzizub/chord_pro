@@ -1,20 +1,17 @@
-import 'package:chord_pro/src/models/metadata.dart';
-import 'package:chord_pro/src/models/preamble.dart';
-import 'package:chord_pro/src/models/song.dart';
-import 'package:chord_pro/src/utils/parse.dart';
+import 'package:chord_pro/src/assembler/assembler.dart';
+import 'package:chord_pro/src/ast/song.dart';
+import 'package:chord_pro/src/diagnostic/parse_result.dart';
 
-/// The entry point of the ChordPro library.
+/// Public entry point for parsing ChordPro documents.
 class ChordPro {
-  /// Process content of the ChordPro string
-  /// Return [Song] with all retrieved info from the content
-  static Song parseSong(String song) {
-    final directiveMap = directiveParse(song);
+  const ChordPro._();
 
-    final preamble = Preamble.fromDirectiveMap(directiveMap);
-    final metadada = Metadata.fromDirectiveMap(directiveMap);
-    return Song(
-      preamble: preamble.value,
-      metadata: metadada.value,
-    );
-  }
+  /// Parses [source] and returns every song it contains plus diagnostics.
+  ///
+  /// Documents are split on `{new_song}` / `{ns}`; an empty document
+  /// still yields a single empty [Song].
+  static ParseResult parse(String source) => assemble(source);
+
+  /// Convenience wrapper that returns the first song of [source].
+  static Song parseSong(String source) => parse(source).songs.first;
 }
