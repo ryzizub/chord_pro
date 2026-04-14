@@ -3,6 +3,7 @@ export 'src/ast/metadata.dart' show Metadata;
 export 'src/ast/section.dart' show Section, SectionKind;
 export 'src/ast/song.dart' show Song;
 export 'src/chord/chord.dart' show Chord, ChordSystem;
+export 'src/chord/chord_definition.dart' show ChordDefinition;
 export 'src/chord_pro.dart' show ChordPro;
 export 'src/diagnostic/diagnostic.dart' show Diagnostic, DiagnosticSeverity;
 export 'src/diagnostic/parse_result.dart' show ParseResult;

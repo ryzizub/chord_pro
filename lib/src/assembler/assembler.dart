@@ -2,6 +2,7 @@ import 'package:chord_pro/src/ast/line.dart';
 import 'package:chord_pro/src/ast/metadata.dart';
 import 'package:chord_pro/src/ast/section.dart';
 import 'package:chord_pro/src/ast/song.dart';
+import 'package:chord_pro/src/chord/chord_definition.dart';
 import 'package:chord_pro/src/diagnostic/diagnostic.dart';
 import 'package:chord_pro/src/diagnostic/parse_result.dart';
 import 'package:chord_pro/src/directive/directive.dart';
@@ -19,6 +20,7 @@ ParseResult assemble(String source) {
 
   var directives = <Directive>[];
   var sections = <Section>[];
+  var chordDefs = <ChordDefinition>[];
   _OpenSection? open;
 
   void closeLoose() {
@@ -49,10 +51,12 @@ ParseResult assemble(String source) {
         metadata: reduceMetadata(_expandMeta(directives, diagnostics)),
         directives: List.unmodifiable(directives),
         sections: List.unmodifiable(sections),
+        chordDefinitions: List.unmodifiable(chordDefs),
       ),
     );
     directives = <Directive>[];
     sections = <Section>[];
+    chordDefs = <ChordDefinition>[];
   }
 
   for (final line in lines) {
@@ -64,6 +68,26 @@ ParseResult assemble(String source) {
       // Song boundary.
       if (directive.name == 'new_song' || directive.name == 'ns') {
         finishSong();
+        continue;
+      }
+
+      // Chord definitions.
+      if (directive.name == 'define' || directive.name == 'chord') {
+        final value = directive.value;
+        if (value != null && value.isNotEmpty) {
+          final def = parseChordDefinition(value, span: directive.span);
+          if (def != null) {
+            chordDefs.add(def);
+          } else {
+            diagnostics.add(
+              Diagnostic(
+                severity: DiagnosticSeverity.warning,
+                message: 'Malformed {${directive.name}} body.',
+                span: directive.span,
+              ),
+            );
+          }
+        }
         continue;
       }
 

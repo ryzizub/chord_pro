@@ -12,11 +12,35 @@ The ChordPro Library is a comprehensive Dart package designed for parsing ChordP
 
 ```dart
 import 'package:chord_pro/chord_pro.dart';
+
+final result = ChordPro.parse(source);
+for (final song in result.songs) {
+  print(song.metadata.titles.firstOrNull);
+  for (final section in song.sections) {
+    print('${section.kind} ${section.label ?? ''}');
+    for (final line in section.lines) {
+      for (final token in line.tokens) {
+        // TextToken / ChordToken / AnnotationToken / InlineDirectiveToken
+      }
+    }
+  }
+}
 ```
+
+`ChordPro.parse` returns a `ParseResult` with every song in the
+document (split on `{new_song}` / `{ns}`) plus any diagnostics.
+`ChordPro.parseSong` is a convenience that returns the first song.
+
+Each `Song` exposes:
+- `metadata` — typed `Metadata` with titles, artists, key, tempo, etc.
+- `sections` — ordered `Section`s for verses, choruses, bridges,
+  tabs, grids, abc, ly, and custom environments, plus loose lines.
+- `chordDefinitions` — parsed `{define}` / `{chord}` bodies.
+- `directives` — the raw directive stream in source order.
 
 ## Example of chordpro format
 
-[example song](./example_song.chopro)    
+[example song](./example/knockin_on_heavens_door.cho)
 
 [license_badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [license_link]: https://opensource.org/licenses/MIT

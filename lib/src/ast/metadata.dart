@@ -120,7 +120,16 @@ const Set<String> _scalarMetadataNames = {
 /// Directives whose name is not recognised as metadata are ignored; the
 /// assembler is responsible for passing only metadata-bearing directives
 /// (including those desugared from `{meta: key value}`).
-Metadata reduceMetadata(Iterable<Directive> directives) {
+///
+/// Directives with a selector (`{title-guitar: …}`) are skipped by
+/// default — callers that know which selectors are active should filter
+/// the input stream before calling this function. When [includeSelected]
+/// is non-empty, directives whose selector is in that set (for the
+/// right polarity) are merged in as if bare.
+Metadata reduceMetadata(
+  Iterable<Directive> directives, {
+  Set<String> includeSelected = const {},
+}) {
   final titles = <String>[];
   final subtitles = <String>[];
   final artists = <String>[];
@@ -138,6 +147,15 @@ Metadata reduceMetadata(Iterable<Directive> directives) {
   int? capo;
 
   for (final d in directives) {
+    if (d.selector != null) {
+      final active = includeSelected.contains(d.selector);
+      final applies = switch (d.polarity) {
+        Polarity.positive => active,
+        Polarity.negative => !active,
+        Polarity.none => true,
+      };
+      if (!applies) continue;
+    }
     final name = _metadataAliases[d.name] ?? d.name;
     final value = d.value;
     if (value == null) continue;
