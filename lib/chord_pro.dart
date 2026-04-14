@@ -1,4 +1,6 @@
+export 'src/ast/line.dart' show Line;
 export 'src/ast/metadata.dart' show Metadata;
+export 'src/ast/section.dart' show Section, SectionKind;
 export 'src/ast/song.dart' show Song;
 export 'src/chord/chord.dart' show Chord, ChordSystem;
 export 'src/chord_pro.dart' show ChordPro;

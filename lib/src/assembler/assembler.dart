@@ -1,10 +1,15 @@
+import 'package:chord_pro/src/ast/line.dart';
 import 'package:chord_pro/src/ast/metadata.dart';
+import 'package:chord_pro/src/ast/section.dart';
 import 'package:chord_pro/src/ast/song.dart';
 import 'package:chord_pro/src/diagnostic/diagnostic.dart';
 import 'package:chord_pro/src/diagnostic/parse_result.dart';
 import 'package:chord_pro/src/directive/directive.dart';
 import 'package:chord_pro/src/directive/directive_parser.dart';
+import 'package:chord_pro/src/inline/inline_tokenizer.dart';
+import 'package:chord_pro/src/source/raw_line.dart';
 import 'package:chord_pro/src/source/scanner.dart';
+import 'package:chord_pro/src/source/source_span.dart';
 
 /// Parses [source] into one or more [Song]s plus diagnostics.
 ParseResult assemble(String source) {
@@ -12,34 +17,259 @@ ParseResult assemble(String source) {
   final diagnostics = <Diagnostic>[];
   final songs = <Song>[];
 
-  var pending = <Directive>[];
+  var directives = <Directive>[];
+  var sections = <Section>[];
+  _OpenSection? open;
 
-  void flushSong() {
+  void closeLoose() {
+    if (open != null && open!.kind == SectionKind.loose) {
+      final s = open!.finish();
+      if (s != null) sections.add(s);
+      open = null;
+    }
+  }
+
+  void finishSong() {
+    if (open != null) {
+      if (open!.kind != SectionKind.loose) {
+        diagnostics.add(
+          Diagnostic(
+            severity: DiagnosticSeverity.warning,
+            message: 'Unterminated ${open!.kind.name} section at end of song.',
+            span: open!.startSpan,
+          ),
+        );
+      }
+      final s = open!.finish();
+      if (s != null) sections.add(s);
+      open = null;
+    }
     songs.add(
       Song(
-        metadata: reduceMetadata(_expandMeta(pending, diagnostics)),
-        directives: List.unmodifiable(pending),
+        metadata: reduceMetadata(_expandMeta(directives, diagnostics)),
+        directives: List.unmodifiable(directives),
+        sections: List.unmodifiable(sections),
       ),
     );
-    pending = <Directive>[];
+    directives = <Directive>[];
+    sections = <Section>[];
   }
 
   for (final line in lines) {
     final directive = parseDirectiveLine(line);
-    if (directive == null) continue;
 
-    if (directive.name == 'new_song' || directive.name == 'ns') {
-      flushSong();
+    if (directive != null) {
+      directives.add(directive);
+
+      // Song boundary.
+      if (directive.name == 'new_song' || directive.name == 'ns') {
+        finishSong();
+        continue;
+      }
+
+      // Chorus recall: bare `{chorus}` without an end directive.
+      if (directive.name == 'chorus' && directive.value == null) {
+        closeLoose();
+        sections.add(
+          Section(
+            kind: SectionKind.chorus,
+            lines: const [],
+            span: directive.span,
+            isChorusRecall: true,
+          ),
+        );
+        continue;
+      }
+
+      final startKind = _startKindOf(directive.name);
+      if (startKind != null) {
+        if (open != null && open!.kind != SectionKind.loose) {
+          diagnostics.add(
+            Diagnostic(
+              severity: DiagnosticSeverity.warning,
+              message: 'Nested or unclosed ${open!.kind.name} section; '
+                  'auto-closing before ${directive.name}.',
+              span: directive.span,
+            ),
+          );
+          final s = open!.finish();
+          if (s != null) sections.add(s);
+          open = null;
+        }
+        closeLoose();
+        open = _OpenSection(
+          kind: startKind.kind,
+          customKind: startKind.customKind,
+          label: directive.value,
+          startSpan: directive.span,
+        );
+        continue;
+      }
+
+      final endKind = _endKindOf(directive.name);
+      if (endKind != null) {
+        if (open == null || open!.kind == SectionKind.loose) {
+          diagnostics.add(
+            Diagnostic(
+              severity: DiagnosticSeverity.warning,
+              message: 'Stray ${directive.name} without matching start.',
+              span: directive.span,
+            ),
+          );
+          continue;
+        }
+        if (open!.kind != endKind.kind ||
+            (endKind.kind == SectionKind.custom &&
+                open!.customKind != endKind.customKind)) {
+          diagnostics.add(
+            Diagnostic(
+              severity: DiagnosticSeverity.warning,
+              message: 'Mismatched end: expected end of ${open!.kind.name}, '
+                  'got ${directive.name}.',
+              span: directive.span,
+            ),
+          );
+        }
+        open!.endSpan = directive.span;
+        final s = open!.finish();
+        if (s != null) sections.add(s);
+        open = null;
+        continue;
+      }
+
+      // Other directive — not a section boundary. It already landed in
+      // `directives` above for metadata reduction and round-tripping.
       continue;
     }
-    pending.add(directive);
+
+    // Non-directive line: either verbatim (inside tab/grid/abc/ly) or
+    // structured lyric/chord content. Blank lines outside any open
+    // section are dropped.
+    if (open == null) {
+      if (line.isBlank) continue;
+      open = _OpenSection(
+        kind: SectionKind.loose,
+        startSpan: line.span,
+      );
+    }
+    open!.addLine(line);
   }
 
-  // Always emit at least one song, even for empty input, so callers can
-  // treat `songs.first` as total.
-  if (pending.isNotEmpty || songs.isEmpty) flushSong();
+  finishSong();
 
   return ParseResult(songs: songs, diagnostics: diagnostics);
+}
+
+class _StartKind {
+  _StartKind(this.kind, [this.customKind]);
+  final SectionKind kind;
+  final String? customKind;
+}
+
+_StartKind? _startKindOf(String name) {
+  switch (name) {
+    case 'start_of_verse':
+    case 'sov':
+      return _StartKind(SectionKind.verse);
+    case 'start_of_chorus':
+    case 'soc':
+      return _StartKind(SectionKind.chorus);
+    case 'start_of_bridge':
+    case 'sob':
+      return _StartKind(SectionKind.bridge);
+    case 'start_of_tab':
+    case 'sot':
+      return _StartKind(SectionKind.tab);
+    case 'start_of_grid':
+    case 'sog':
+      return _StartKind(SectionKind.grid);
+    case 'start_of_abc':
+      return _StartKind(SectionKind.abc);
+    case 'start_of_ly':
+      return _StartKind(SectionKind.ly);
+  }
+  if (name.startsWith('start_of_')) {
+    return _StartKind(SectionKind.custom, name.substring('start_of_'.length));
+  }
+  return null;
+}
+
+_StartKind? _endKindOf(String name) {
+  switch (name) {
+    case 'end_of_verse':
+    case 'eov':
+      return _StartKind(SectionKind.verse);
+    case 'end_of_chorus':
+    case 'eoc':
+      return _StartKind(SectionKind.chorus);
+    case 'end_of_bridge':
+    case 'eob':
+      return _StartKind(SectionKind.bridge);
+    case 'end_of_tab':
+    case 'eot':
+      return _StartKind(SectionKind.tab);
+    case 'end_of_grid':
+    case 'eog':
+      return _StartKind(SectionKind.grid);
+    case 'end_of_abc':
+      return _StartKind(SectionKind.abc);
+    case 'end_of_ly':
+      return _StartKind(SectionKind.ly);
+  }
+  if (name.startsWith('end_of_')) {
+    return _StartKind(SectionKind.custom, name.substring('end_of_'.length));
+  }
+  return null;
+}
+
+class _OpenSection {
+  _OpenSection({
+    required this.kind,
+    required this.startSpan,
+    this.customKind,
+    this.label,
+  });
+
+  final SectionKind kind;
+  final String? customKind;
+  final String? label;
+  final SourceSpan startSpan;
+  SourceSpan? endSpan;
+  final List<Line> _lines = [];
+
+  bool get isVerbatim =>
+      kind == SectionKind.tab ||
+      kind == SectionKind.grid ||
+      kind == SectionKind.abc ||
+      kind == SectionKind.ly;
+
+  void addLine(RawLine line) {
+    if (isVerbatim) {
+      _lines.add(Line.verbatim(verbatim: line.text, span: line.span));
+    } else {
+      _lines.add(
+        Line(tokens: tokenizeInline(line), span: line.span),
+      );
+    }
+  }
+
+  Section? finish() {
+    if (kind == SectionKind.loose && _lines.isEmpty) return null;
+    final end = endSpan ?? (_lines.isNotEmpty ? _lines.last.span : startSpan);
+    return Section(
+      kind: kind,
+      label: label,
+      customKind: customKind,
+      lines: List.unmodifiable(_lines),
+      span: SourceSpan(
+        line: startSpan.line,
+        column: startSpan.column,
+        length: end.line == startSpan.line
+            ? (end.column + end.length - startSpan.column)
+            : startSpan.length,
+      ),
+    );
+  }
 }
 
 /// Expands `{meta: key value}` directives into synthetic `{key: value}`

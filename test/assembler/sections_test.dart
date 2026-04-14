@@ -1,0 +1,95 @@
+import 'package:chord_pro/chord_pro.dart';
+import 'package:test/test.dart';
+
+void main() {
+  group('Assembler sections', () {
+    test('wraps loose lines in a loose section', () {
+      final song = ChordPro.parseSong('hello world');
+      expect(song.sections, hasLength(1));
+      expect(song.sections.single.kind, SectionKind.loose);
+      expect(song.sections.single.lines, hasLength(1));
+      final tokens = song.sections.single.lines.single.tokens;
+      expect(tokens, hasLength(1));
+      expect((tokens.single as TextToken).text, 'hello world');
+    });
+
+    test('captures verse with label', () {
+      const source = '''
+{start_of_verse: Verse 1}
+[G]line one
+[D]line two
+{end_of_verse}
+''';
+      final song = ChordPro.parseSong(source);
+      expect(song.sections, hasLength(1));
+      final section = song.sections.single;
+      expect(section.kind, SectionKind.verse);
+      expect(section.label, 'Verse 1');
+      expect(section.lines, hasLength(2));
+    });
+
+    test('captures chorus via short form {soc}/{eoc}', () {
+      const source = '{soc}\n[C]hey\n{eoc}';
+      final song = ChordPro.parseSong(source);
+      expect(song.sections.single.kind, SectionKind.chorus);
+    });
+
+    test('captures tab verbatim', () {
+      const source = '''
+{start_of_tab}
+e|--0--|
+B|--1--|
+{end_of_tab}
+''';
+      final song = ChordPro.parseSong(source);
+      final section = song.sections.single;
+      expect(section.kind, SectionKind.tab);
+      expect(section.lines.every((l) => l.isVerbatim), isTrue);
+      expect(section.lines.first.verbatim, 'e|--0--|');
+    });
+
+    test('bare {chorus} is a chorus recall', () {
+      final song = ChordPro.parseSong('{chorus}');
+      expect(song.sections, hasLength(1));
+      expect(song.sections.single.kind, SectionKind.chorus);
+      expect(song.sections.single.isChorusRecall, isTrue);
+      expect(song.sections.single.lines, isEmpty);
+    });
+
+    test('stray end emits a diagnostic and no section', () {
+      final result = ChordPro.parse('{end_of_verse}');
+      expect(result.songs.single.sections, isEmpty);
+      expect(result.diagnostics, hasLength(1));
+      expect(result.diagnostics.single.severity, DiagnosticSeverity.warning);
+    });
+
+    test('unterminated environment warns and auto-closes at EOF', () {
+      final result = ChordPro.parse('{start_of_verse}\nline\n');
+      expect(result.songs.single.sections, hasLength(1));
+      expect(result.diagnostics, hasLength(1));
+    });
+
+    test('custom environment is preserved with customKind', () {
+      const source = '{start_of_intro}\nline\n{end_of_intro}';
+      final song = ChordPro.parseSong(source);
+      expect(song.sections.single.kind, SectionKind.custom);
+      expect(song.sections.single.customKind, 'intro');
+    });
+
+    test('directives and loose content split across multiple sections', () {
+      const source = '''
+hello
+{start_of_chorus}
+[G]bright
+{end_of_chorus}
+world
+''';
+      final song = ChordPro.parseSong(source);
+      expect(song.sections.map((s) => s.kind).toList(), [
+        SectionKind.loose,
+        SectionKind.chorus,
+        SectionKind.loose,
+      ]);
+    });
+  });
+}
