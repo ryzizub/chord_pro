@@ -1,3 +1,4 @@
+import 'package:chord_pro/src/ast/formatting.dart';
 import 'package:chord_pro/src/ast/line.dart';
 import 'package:chord_pro/src/ast/metadata.dart';
 import 'package:chord_pro/src/ast/section.dart';
@@ -14,6 +15,7 @@ class Song {
     this.directives = const [],
     this.sections = const [],
     this.chordDefinitions = const [],
+    this.formatting = const FormattingSettings(),
   });
 
   /// Structured metadata collected from the song's directives.
@@ -30,6 +32,9 @@ class Song {
   /// Preserved losslessly so future stages can render or re-emit the
   /// document without re-parsing.
   final List<Directive> directives;
+
+  /// Document-wide font/size/colour settings.
+  final FormattingSettings formatting;
 
   /// Returns a new [Song] with every chord transposed by [semitones].
   ///
@@ -89,6 +94,7 @@ class Song {
       directives: directives,
       sections: newSections,
       chordDefinitions: chordDefinitions,
+      formatting: formatting,
     );
   }
 }

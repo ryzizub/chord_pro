@@ -1,3 +1,4 @@
+import 'package:chord_pro/src/ast/formatting.dart';
 import 'package:chord_pro/src/ast/line.dart';
 import 'package:chord_pro/src/ast/metadata.dart';
 import 'package:chord_pro/src/ast/section.dart';
@@ -53,6 +54,7 @@ ParseResult assemble(String source) {
         directives: List.unmodifiable(directives),
         sections: List.unmodifiable(sections),
         chordDefinitions: List.unmodifiable(chordDefs),
+        formatting: reduceFormatting(directives),
       ),
     );
     directives = <Directive>[];

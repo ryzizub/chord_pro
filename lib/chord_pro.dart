@@ -1,3 +1,4 @@
+export 'src/ast/formatting.dart' show FormattingProps, FormattingSettings;
 export 'src/ast/line.dart' show CommentStyle, LayoutBreak, Line, LineKind;
 export 'src/ast/metadata.dart' show Metadata;
 export 'src/ast/section.dart' show Section, SectionKind;
