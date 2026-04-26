@@ -24,5 +24,15 @@ void main() {
       expect(lines.map((l) => l.text).toList(), ['a', '', 'b']);
       expect(lines[1].isBlank, isTrue);
     });
+
+    test('detects file-comment lines', () {
+      final lines = scan('# top\n  # indented\nplain\n#');
+      expect(lines.map((l) => l.isFileComment).toList(), [
+        true,
+        true,
+        false,
+        true,
+      ]);
+    });
   });
 }

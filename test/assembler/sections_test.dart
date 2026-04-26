@@ -91,5 +91,22 @@ world
         SectionKind.loose,
       ]);
     });
+
+    test('# file-comment lines are ignored', () {
+      const source = '''
+# this is a comment
+{title: Sample}
+# another note
+hello world
+''';
+      final song = ChordPro.parseSong(source);
+      expect(song.metadata.titles, ['Sample']);
+      expect(song.sections, hasLength(1));
+      expect(song.sections.single.lines, hasLength(1));
+      expect(
+        (song.sections.single.lines.single.tokens.single as TextToken).text,
+        'hello world',
+      );
+    });
   });
 }

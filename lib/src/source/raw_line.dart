@@ -21,4 +21,18 @@ class RawLine {
 
   /// Whether the line contains only whitespace.
   bool get isBlank => text.trim().isEmpty;
+
+  /// Whether the line is a file-level comment.
+  ///
+  /// Per the ChordPro spec, lines whose first non-whitespace character is
+  /// `#` are treated as comments and skipped entirely (they are not the
+  /// same as `{comment}` directives).
+  bool get isFileComment {
+    for (var i = 0; i < text.length; i++) {
+      final ch = text.codeUnitAt(i);
+      if (ch == 0x20 || ch == 0x09) continue;
+      return ch == 0x23;
+    }
+    return false;
+  }
 }

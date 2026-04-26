@@ -60,6 +60,8 @@ ParseResult assemble(String source) {
   }
 
   for (final line in lines) {
+    if (line.isFileComment) continue;
+
     final directive = parseDirectiveLine(line);
 
     if (directive != null) {
