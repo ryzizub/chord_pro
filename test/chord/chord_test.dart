@@ -50,6 +50,38 @@ void main() {
     test('returns null for non-chord garbage', () {
       expect(Chord.tryParse('?@!'), isNull);
     });
+
+    test('accepts the German H letter root', () {
+      final c = Chord.tryParse('Hm')!;
+      expect(c.system, ChordSystem.letter);
+      expect(c.root, 'H');
+      expect(c.quality, 'm');
+    });
+
+    test('accepts unicode flat and sharp accidentals', () {
+      final flat = Chord.tryParse('B♭maj7')!;
+      expect(flat.root, 'B♭');
+      expect(flat.quality, 'maj');
+      final sharp = Chord.tryParse('F♯m')!;
+      expect(sharp.root, 'F♯');
+      expect(sharp.quality, 'm');
+    });
+
+    test('accepts mi/min/- as minor qualities', () {
+      expect(Chord.tryParse('Cmi')!.quality, 'mi');
+      expect(Chord.tryParse('C-')!.quality, '-');
+    });
+
+    test('parses half-diminished and diminished glyph qualities', () {
+      expect(Chord.tryParse('Bø7')!.quality, 'ø');
+      expect(Chord.tryParse('C°')!.quality, '°');
+    });
+
+    test('parses NC as a no-chord marker', () {
+      final c = Chord.tryParse('NC')!;
+      expect(c.root, 'NC');
+      expect(c.raw, 'NC');
+    });
   });
 
   group('Chord.transpose', () {
@@ -85,6 +117,16 @@ void main() {
     test('leaves Roman chords unchanged', () {
       final c = Chord.tryParse('IV')!.transpose(3);
       expect(c.raw, 'IV');
+    });
+
+    test('treats German H as B for transposition', () {
+      final c = Chord.tryParse('H')!.transpose(1);
+      expect(c.root, 'C');
+    });
+
+    test('accepts unicode-accidental roots when transposing', () {
+      final c = Chord.tryParse('F♯m')!.transpose(2);
+      expect(c.root, 'G#');
     });
   });
 }

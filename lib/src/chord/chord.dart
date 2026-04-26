@@ -63,6 +63,11 @@ class Chord {
     if (raw.isEmpty) return null;
     if (_isWhitespace(raw.codeUnitAt(0))) return null;
 
+    // No-chord (rest) marker.
+    if (raw == 'NC' || raw == 'N.C.' || raw == 'N.C') {
+      return Chord(system: ChordSystem.letter, root: raw, raw: raw);
+    }
+
     // Split bass note on first unescaped '/'.
     final slash = raw.indexOf('/');
     final head = slash < 0 ? raw : raw.substring(0, slash);
@@ -127,19 +132,39 @@ class Chord {
 
 /// Transposes a single root spelling such as `F#` or `Bb` by
 /// [semitones], returning the transposed spelling or `null` when
-/// [root] is not a recognised letter root.
+/// [root] is not a recognised letter root. Unicode accidentals
+/// (`♯`/`♭`) and German `H` (= B natural) are accepted on input.
 String? transposeRoot(
   String root,
   int semitones, {
   AccidentalPreference accidentals = AccidentalPreference.sharps,
 }) {
-  final s = _rootToSemitone[root];
+  final s = _rootToSemitone[_canonicaliseRoot(root)];
   if (s == null) return null;
   final shifted = (s + semitones) % 12;
   final positive = shifted < 0 ? shifted + 12 : shifted;
   return accidentals == AccidentalPreference.flats
       ? _semitoneToFlat[positive]
       : _semitoneToSharp[positive];
+}
+
+String _canonicaliseRoot(String root) {
+  if (root.isEmpty) return root;
+  // German H → B natural.
+  final canonical = StringBuffer();
+  for (var i = 0; i < root.length; i++) {
+    final c = root.codeUnitAt(i);
+    if (i == 0 && c == 0x48) {
+      canonical.write('B');
+    } else if (c == 0x266F) {
+      canonical.write('#');
+    } else if (c == 0x266D) {
+      canonical.write('b');
+    } else {
+      canonical.writeCharCode(c);
+    }
+  }
+  return canonical.toString();
 }
 
 String _renderLetter(
@@ -219,16 +244,16 @@ _Parsed? _parseSimple(String s) {
 
 int _rootEnd(String s) {
   final c0 = s.codeUnitAt(0);
-  // Letter (A-G) chord.
-  if (c0 >= 0x41 && c0 <= 0x47) {
+  // Letter (A-H) chord. H is German notation for B.
+  if ((c0 >= 0x41 && c0 <= 0x47) || c0 == 0x48) {
     var i = 1;
-    if (i < s.length && (s.codeUnitAt(i) == 0x23 || s.codeUnitAt(i) == 0x62)) {
+    if (i < s.length && _isAccidental(s.codeUnitAt(i))) {
       i++;
     }
     return i;
   }
   // Nashville: optional accidental then digit 1..7.
-  if (c0 == 0x23 || c0 == 0x62) {
+  if (_isAccidental(c0)) {
     if (s.length >= 2 && _isNashvilleDigit(s.codeUnitAt(1))) return 2;
     return 0;
   }
@@ -246,8 +271,8 @@ int _rootEnd(String s) {
 
 ChordSystem _systemFor(String root) {
   final c0 = root.codeUnitAt(0);
-  if (c0 >= 0x41 && c0 <= 0x47) return ChordSystem.letter;
-  if (_isNashvilleDigit(c0) || c0 == 0x23 || c0 == 0x62) {
+  if ((c0 >= 0x41 && c0 <= 0x47) || c0 == 0x48) return ChordSystem.letter;
+  if (_isNashvilleDigit(c0) || _isAccidental(c0)) {
     return ChordSystem.nashville;
   }
   return ChordSystem.roman;
@@ -258,16 +283,26 @@ bool _isNashvilleDigit(int c) => c >= 0x31 && c <= 0x37; // 1..7
 bool _isRomanChar(int c) =>
     c == 0x49 || c == 0x56 || c == 0x69 || c == 0x76; // I V i v
 
+bool _isAccidental(int c) =>
+    c == 0x23 || // '#'
+    c == 0x62 || // 'b'
+    c == 0x266D || // '♭'
+    c == 0x266F; // '♯'
+
 bool _isWhitespace(int c) => c == 0x20 || c == 0x09;
 
 const List<String> _qualities = [
   'maj',
   'min',
+  'mi',
   'sus2',
   'sus4',
   'sus',
   'aug',
   'dim',
   'add',
+  'ø', // half-diminished
+  '°', // diminished
   'm',
+  '-',
 ];
