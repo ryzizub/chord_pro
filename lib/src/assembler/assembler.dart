@@ -132,6 +132,21 @@ ParseResult assemble(String source) {
         continue;
       }
 
+      final commentStyle = _commentStyleOf(directive.name);
+      if (commentStyle != null) {
+        final value = directive.value ?? '';
+        open ??= _OpenSection(
+          kind: SectionKind.loose,
+          startSpan: directive.span,
+        );
+        open!.addCommentLine(
+          text: value,
+          style: commentStyle,
+          span: directive.span,
+        );
+        continue;
+      }
+
       final endKind = _endKindOf(directive.name);
       if (endKind != null) {
         if (open == null || open!.kind == SectionKind.loose) {
@@ -220,6 +235,23 @@ _StartKind? _startKindOf(String name) {
   return null;
 }
 
+CommentStyle? _commentStyleOf(String name) {
+  switch (name) {
+    case 'comment':
+    case 'c':
+      return CommentStyle.plain;
+    case 'comment_italic':
+    case 'ci':
+      return CommentStyle.italic;
+    case 'comment_box':
+    case 'cb':
+      return CommentStyle.box;
+    case 'highlight':
+      return CommentStyle.highlight;
+  }
+  return null;
+}
+
 _StartKind? _endKindOf(String name) {
   switch (name) {
     case 'end_of_verse':
@@ -277,6 +309,14 @@ class _OpenSection {
         Line(tokens: tokenizeInline(line), span: line.span),
       );
     }
+  }
+
+  void addCommentLine({
+    required String text,
+    required CommentStyle style,
+    required SourceSpan span,
+  }) {
+    _lines.add(Line.comment(comment: text, commentStyle: style, span: span));
   }
 
   Section? finish() {

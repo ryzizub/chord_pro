@@ -92,6 +92,34 @@ world
       ]);
     });
 
+    test('comment-family directives become comment lines in the section', () {
+      const source = '''
+{start_of_verse}
+[G]hello
+{comment: lookout, breakdown}
+{ci: gentle now}
+{cb: BOX}
+{highlight: emphasised}
+[D]world
+{end_of_verse}
+''';
+      final song = ChordPro.parseSong(source);
+      final lines = song.sections.single.lines;
+      expect(lines.map((l) => l.kind).toList(), [
+        LineKind.structured,
+        LineKind.comment,
+        LineKind.comment,
+        LineKind.comment,
+        LineKind.comment,
+        LineKind.structured,
+      ]);
+      expect(lines[1].comment, 'lookout, breakdown');
+      expect(lines[1].commentStyle, CommentStyle.plain);
+      expect(lines[2].commentStyle, CommentStyle.italic);
+      expect(lines[3].commentStyle, CommentStyle.box);
+      expect(lines[4].commentStyle, CommentStyle.highlight);
+    });
+
     test('# file-comment lines are ignored', () {
       const source = '''
 # this is a comment
