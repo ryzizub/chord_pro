@@ -54,5 +54,17 @@ void main() {
       final song = ChordPro.parseSong(source);
       expect(song.metadata.tags, ['holiday', 'acoustic']);
     });
+
+    test('keeps x_ custom extensions out of metadata.other', () {
+      const source = '{x_myapp_id: 42}\n{mood: bright}';
+      final song = ChordPro.parseSong(source);
+      expect(song.metadata.other, {
+        'mood': ['bright'],
+      });
+      expect(
+        song.customExtensions.map((d) => d.name).toList(),
+        ['x_myapp_id'],
+      );
+    });
   });
 }

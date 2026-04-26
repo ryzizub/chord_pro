@@ -54,6 +54,14 @@ class Directive {
   /// line rather than appearing as `{key: value}` directly.
   final bool fromMeta;
 
+  /// Whether the directive is in the spec's `x_*` custom namespace.
+  ///
+  /// ChordPro reserves `x_namespace_directive` for application-specific
+  /// extensions and tells unsupporting tools to ignore them. The library
+  /// preserves them on [Song.directives] without trying to interpret
+  /// them as metadata.
+  bool get isCustomExtension => name.startsWith('x_');
+
   @override
   String toString() {
     final sel = selector == null

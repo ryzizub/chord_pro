@@ -183,6 +183,7 @@ Metadata reduceMetadata(
   int? columns;
 
   for (final d in directives) {
+    if (d.isCustomExtension) continue;
     if (d.selector != null) {
       final active = includeSelected.contains(d.selector);
       final applies = switch (d.polarity) {

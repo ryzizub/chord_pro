@@ -36,6 +36,10 @@ class Song {
   /// Document-wide font/size/colour settings.
   final FormattingSettings formatting;
 
+  /// Directives in the `x_*` custom namespace, in source order.
+  Iterable<Directive> get customExtensions =>
+      directives.where((d) => d.isCustomExtension);
+
   /// Returns a new [Song] with every chord transposed by [semitones].
   ///
   /// Letter chords are remapped through the chromatic scale; chords in
