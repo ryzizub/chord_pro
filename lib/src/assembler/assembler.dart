@@ -7,6 +7,7 @@ import 'package:chord_pro/src/diagnostic/diagnostic.dart';
 import 'package:chord_pro/src/diagnostic/parse_result.dart';
 import 'package:chord_pro/src/directive/directive.dart';
 import 'package:chord_pro/src/directive/directive_parser.dart';
+import 'package:chord_pro/src/directive/image_directive.dart';
 import 'package:chord_pro/src/inline/inline_tokenizer.dart';
 import 'package:chord_pro/src/source/raw_line.dart';
 import 'package:chord_pro/src/source/scanner.dart';
@@ -144,6 +145,37 @@ ParseResult assemble(String source) {
           style: commentStyle,
           span: directive.span,
         );
+        continue;
+      }
+
+      if (directive.name == 'image') {
+        final value = directive.value;
+        if (value == null || value.isEmpty) {
+          diagnostics.add(
+            Diagnostic(
+              severity: DiagnosticSeverity.warning,
+              message: 'Empty {image} directive.',
+              span: directive.span,
+            ),
+          );
+          continue;
+        }
+        final image = parseImageDirective(value, span: directive.span);
+        if (image == null) {
+          diagnostics.add(
+            Diagnostic(
+              severity: DiagnosticSeverity.warning,
+              message: 'Malformed {image} directive.',
+              span: directive.span,
+            ),
+          );
+          continue;
+        }
+        open ??= _OpenSection(
+          kind: SectionKind.loose,
+          startSpan: directive.span,
+        );
+        open!.addImageLine(image: image, span: directive.span);
         continue;
       }
 
@@ -317,6 +349,13 @@ class _OpenSection {
     required SourceSpan span,
   }) {
     _lines.add(Line.comment(comment: text, commentStyle: style, span: span));
+  }
+
+  void addImageLine({
+    required ImageDirective image,
+    required SourceSpan span,
+  }) {
+    _lines.add(Line.image(image: image, span: span));
   }
 
   Section? finish() {
