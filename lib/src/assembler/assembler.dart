@@ -270,6 +270,10 @@ _StartKind? _startKindOf(String name) {
       return _StartKind(SectionKind.abc);
     case 'start_of_ly':
       return _StartKind(SectionKind.ly);
+    case 'start_of_svg':
+      return _StartKind(SectionKind.svg);
+    case 'start_of_textblock':
+      return _StartKind(SectionKind.textblock);
   }
   if (name.startsWith('start_of_')) {
     return _StartKind(SectionKind.custom, name.substring('start_of_'.length));
@@ -330,6 +334,10 @@ _StartKind? _endKindOf(String name) {
       return _StartKind(SectionKind.abc);
     case 'end_of_ly':
       return _StartKind(SectionKind.ly);
+    case 'end_of_svg':
+      return _StartKind(SectionKind.svg);
+    case 'end_of_textblock':
+      return _StartKind(SectionKind.textblock);
   }
   if (name.startsWith('end_of_')) {
     return _StartKind(SectionKind.custom, name.substring('end_of_'.length));
@@ -356,7 +364,9 @@ class _OpenSection {
       kind == SectionKind.tab ||
       kind == SectionKind.grid ||
       kind == SectionKind.abc ||
-      kind == SectionKind.ly;
+      kind == SectionKind.ly ||
+      kind == SectionKind.svg ||
+      kind == SectionKind.textblock;
 
   void addLine(RawLine line) {
     if (isVerbatim) {

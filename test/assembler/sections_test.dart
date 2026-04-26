@@ -34,6 +34,35 @@ void main() {
       expect(song.sections.single.kind, SectionKind.chorus);
     });
 
+    test('captures svg verbatim', () {
+      const source = '''
+{start_of_svg}
+<svg></svg>
+{end_of_svg}
+''';
+      final song = ChordPro.parseSong(source);
+      final section = song.sections.single;
+      expect(section.kind, SectionKind.svg);
+      expect(section.lines.every((l) => l.isVerbatim), isTrue);
+      expect(section.lines.first.verbatim, '<svg></svg>');
+    });
+
+    test('captures textblock verbatim', () {
+      const source = '''
+{start_of_textblock}
+A note
+about layout
+{end_of_textblock}
+''';
+      final song = ChordPro.parseSong(source);
+      final section = song.sections.single;
+      expect(section.kind, SectionKind.textblock);
+      expect(section.lines.map((l) => l.verbatim).toList(), [
+        'A note',
+        'about layout',
+      ]);
+    });
+
     test('captures tab verbatim', () {
       const source = '''
 {start_of_tab}

@@ -27,6 +27,12 @@ enum SectionKind {
   /// `{start_of_ly}` … `{end_of_ly}` (verbatim).
   ly,
 
+  /// `{start_of_svg}` … `{end_of_svg}` (verbatim).
+  svg,
+
+  /// `{start_of_textblock}` … `{end_of_textblock}` (verbatim).
+  textblock,
+
   /// Custom `{start_of_X}` environment not recognised above.
   custom,
 }
