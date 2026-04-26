@@ -23,6 +23,7 @@ class Metadata {
     this.duration,
     this.capo,
     this.transpose,
+    this.columns,
     this.tags = const [],
     this.other = const {},
   });
@@ -78,6 +79,9 @@ class Metadata {
   /// apply it to chord tokens.
   final int? transpose;
 
+  /// Number of layout columns (`{columns: N}` / `{col: N}`).
+  final int? columns;
+
   /// Free-form tags (`{tag}`), preserved in source order.
   final List<String> tags;
 
@@ -102,6 +106,7 @@ class Metadata {
       duration == null &&
       capo == null &&
       transpose == null &&
+      columns == null &&
       tags.isEmpty &&
       other.isEmpty;
 }
@@ -112,6 +117,7 @@ class Metadata {
 const Map<String, String> _metadataAliases = {
   't': 'title',
   'st': 'subtitle',
+  'col': 'columns',
 };
 
 const Set<String> _listMetadataNames = {
@@ -123,7 +129,13 @@ const Set<String> _listMetadataNames = {
   'tag',
 };
 
-const Set<String> _intMetadataNames = {'year', 'tempo', 'capo', 'transpose'};
+const Set<String> _intMetadataNames = {
+  'year',
+  'tempo',
+  'capo',
+  'transpose',
+  'columns',
+};
 
 const Set<String> _scalarMetadataNames = {
   'sorttitle',
@@ -168,6 +180,7 @@ Metadata reduceMetadata(
   String? duration;
   int? capo;
   int? transpose;
+  int? columns;
 
   for (final d in directives) {
     if (d.selector != null) {
@@ -227,6 +240,8 @@ Metadata reduceMetadata(
           capo = n;
         case 'transpose':
           transpose = n;
+        case 'columns':
+          columns = n;
       }
     } else {
       (other[name] ??= []).add(value);
@@ -250,6 +265,7 @@ Metadata reduceMetadata(
     duration: duration,
     capo: capo,
     transpose: transpose,
+    columns: columns,
     tags: tags,
     other: other,
   );

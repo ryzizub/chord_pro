@@ -120,6 +120,36 @@ world
       expect(lines[4].commentStyle, CommentStyle.highlight);
     });
 
+    test('layout-break directives become layoutBreak lines', () {
+      const source = '''
+[G]hello
+{new_page}
+{column_break}
+{npp}
+''';
+      final song = ChordPro.parseSong(source);
+      final lines = song.sections.single.lines;
+      expect(lines.map((l) => l.kind).toList(), [
+        LineKind.structured,
+        LineKind.layoutBreak,
+        LineKind.layoutBreak,
+        LineKind.layoutBreak,
+      ]);
+      expect(lines[1].layoutBreak, LayoutBreak.newPage);
+      expect(lines[2].layoutBreak, LayoutBreak.columnBreak);
+      expect(lines[3].layoutBreak, LayoutBreak.newPhysicalPage);
+    });
+
+    test('{columns: N} populates metadata.columns', () {
+      final song = ChordPro.parseSong('{columns: 2}');
+      expect(song.metadata.columns, 2);
+    });
+
+    test('{col: N} short form populates metadata.columns', () {
+      final song = ChordPro.parseSong('{col: 3}');
+      expect(song.metadata.columns, 3);
+    });
+
     test('# file-comment lines are ignored', () {
       const source = '''
 # this is a comment

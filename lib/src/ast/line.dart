@@ -16,6 +16,21 @@ enum LineKind {
 
   /// An embedded image emitted by `{image: …}`.
   image,
+
+  /// A layout break emitted by `{new_page}` / `{column_break}` etc.
+  layoutBreak,
+}
+
+/// Which kind of layout break a [Line] requests.
+enum LayoutBreak {
+  /// `{new_page}` / `{np}`.
+  newPage,
+
+  /// `{new_physical_page}` / `{npp}`.
+  newPhysicalPage,
+
+  /// `{column_break}` / `{colb}`.
+  columnBreak,
 }
 
 /// Visual style requested by a comment-family directive.
@@ -45,7 +60,8 @@ class Line {
         verbatim = null,
         comment = null,
         commentStyle = null,
-        image = null;
+        image = null,
+        layoutBreak = null;
 
   /// Creates a verbatim line (used inside tab/grid/abc/ly blocks).
   const Line.verbatim({required String this.verbatim, required this.span})
@@ -53,7 +69,8 @@ class Line {
         tokens = const [],
         comment = null,
         commentStyle = null,
-        image = null;
+        image = null,
+        layoutBreak = null;
 
   /// Creates a comment line emitted by a `{comment}`-family directive.
   const Line.comment({
@@ -63,7 +80,8 @@ class Line {
   })  : kind = LineKind.comment,
         tokens = const [],
         verbatim = null,
-        image = null;
+        image = null,
+        layoutBreak = null;
 
   /// Creates an image line emitted by an `{image: …}` directive.
   const Line.image({
@@ -73,7 +91,19 @@ class Line {
         tokens = const [],
         verbatim = null,
         comment = null,
-        commentStyle = null;
+        commentStyle = null,
+        layoutBreak = null;
+
+  /// Creates a layout-break line emitted by `{new_page}` and friends.
+  const Line.layoutBreak({
+    required LayoutBreak this.layoutBreak,
+    required this.span,
+  })  : kind = LineKind.layoutBreak,
+        tokens = const [],
+        verbatim = null,
+        comment = null,
+        commentStyle = null,
+        image = null;
 
   /// Discriminator across line flavours.
   final LineKind kind;
@@ -93,6 +123,9 @@ class Line {
   /// Embedded image directive, or `null` if not an image line.
   final ImageDirective? image;
 
+  /// Layout break kind, or `null` if not a layout-break line.
+  final LayoutBreak? layoutBreak;
+
   /// Source span covering the original line.
   final SourceSpan span;
 
@@ -104,4 +137,7 @@ class Line {
 
   /// Whether this line is an embedded image.
   bool get isImage => kind == LineKind.image;
+
+  /// Whether this line is a layout break.
+  bool get isLayoutBreak => kind == LineKind.layoutBreak;
 }

@@ -82,6 +82,7 @@ class Song {
         duration: metadata.duration,
         capo: metadata.capo,
         transpose: 0,
+        columns: metadata.columns,
         tags: metadata.tags,
         other: metadata.other,
       ),

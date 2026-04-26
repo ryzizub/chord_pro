@@ -1,4 +1,4 @@
-export 'src/ast/line.dart' show CommentStyle, Line, LineKind;
+export 'src/ast/line.dart' show CommentStyle, LayoutBreak, Line, LineKind;
 export 'src/ast/metadata.dart' show Metadata;
 export 'src/ast/section.dart' show Section, SectionKind;
 export 'src/ast/song.dart' show Song;

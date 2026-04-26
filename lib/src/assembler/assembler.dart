@@ -148,6 +148,16 @@ ParseResult assemble(String source) {
         continue;
       }
 
+      final layoutBreak = _layoutBreakOf(directive.name);
+      if (layoutBreak != null) {
+        open ??= _OpenSection(
+          kind: SectionKind.loose,
+          startSpan: directive.span,
+        );
+        open!.addLayoutBreak(kind: layoutBreak, span: directive.span);
+        continue;
+      }
+
       if (directive.name == 'image') {
         final value = directive.value;
         if (value == null || value.isEmpty) {
@@ -267,6 +277,21 @@ _StartKind? _startKindOf(String name) {
   return null;
 }
 
+LayoutBreak? _layoutBreakOf(String name) {
+  switch (name) {
+    case 'new_page':
+    case 'np':
+      return LayoutBreak.newPage;
+    case 'new_physical_page':
+    case 'npp':
+      return LayoutBreak.newPhysicalPage;
+    case 'column_break':
+    case 'colb':
+      return LayoutBreak.columnBreak;
+  }
+  return null;
+}
+
 CommentStyle? _commentStyleOf(String name) {
   switch (name) {
     case 'comment':
@@ -356,6 +381,13 @@ class _OpenSection {
     required SourceSpan span,
   }) {
     _lines.add(Line.image(image: image, span: span));
+  }
+
+  void addLayoutBreak({
+    required LayoutBreak kind,
+    required SourceSpan span,
+  }) {
+    _lines.add(Line.layoutBreak(layoutBreak: kind, span: span));
   }
 
   Section? finish() {
