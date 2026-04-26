@@ -11,6 +11,7 @@ class Metadata {
     this.sortTitle,
     this.subtitles = const [],
     this.artists = const [],
+    this.sortArtist,
     this.composers = const [],
     this.lyricists = const [],
     this.copyright,
@@ -21,6 +22,7 @@ class Metadata {
     this.tempo,
     this.duration,
     this.capo,
+    this.tags = const [],
     this.other = const {},
   });
 
@@ -35,6 +37,9 @@ class Metadata {
 
   /// Performing artists (`{artist}`).
   final List<String> artists;
+
+  /// Sort artist (`{sortartist}`).
+  final String? sortArtist;
 
   /// Composers (`{composer}`).
   final List<String> composers;
@@ -66,6 +71,9 @@ class Metadata {
   /// Capo fret number.
   final int? capo;
 
+  /// Free-form tags (`{tag}`), preserved in source order.
+  final List<String> tags;
+
   /// Unknown / custom metadata. Keys are lowercased.
   final Map<String, List<String>> other;
 
@@ -75,6 +83,7 @@ class Metadata {
       sortTitle == null &&
       subtitles.isEmpty &&
       artists.isEmpty &&
+      sortArtist == null &&
       composers.isEmpty &&
       lyricists.isEmpty &&
       copyright == null &&
@@ -85,6 +94,7 @@ class Metadata {
       tempo == null &&
       duration == null &&
       capo == null &&
+      tags.isEmpty &&
       other.isEmpty;
 }
 
@@ -102,12 +112,14 @@ const Set<String> _listMetadataNames = {
   'artist',
   'composer',
   'lyricist',
+  'tag',
 };
 
 const Set<String> _intMetadataNames = {'year', 'tempo', 'capo'};
 
 const Set<String> _scalarMetadataNames = {
   'sorttitle',
+  'sortartist',
   'copyright',
   'album',
   'key',
@@ -135,8 +147,10 @@ Metadata reduceMetadata(
   final artists = <String>[];
   final composers = <String>[];
   final lyricists = <String>[];
+  final tags = <String>[];
   final other = <String, List<String>>{};
   String? sortTitle;
+  String? sortArtist;
   String? copyright;
   String? album;
   int? year;
@@ -172,11 +186,15 @@ Metadata reduceMetadata(
           composers.add(value);
         case 'lyricist':
           lyricists.add(value);
+        case 'tag':
+          tags.add(value);
       }
     } else if (_scalarMetadataNames.contains(name)) {
       switch (name) {
         case 'sorttitle':
           sortTitle = value;
+        case 'sortartist':
+          sortArtist = value;
         case 'copyright':
           copyright = value;
         case 'album':
@@ -209,6 +227,7 @@ Metadata reduceMetadata(
     sortTitle: sortTitle,
     subtitles: subtitles,
     artists: artists,
+    sortArtist: sortArtist,
     composers: composers,
     lyricists: lyricists,
     copyright: copyright,
@@ -219,6 +238,7 @@ Metadata reduceMetadata(
     tempo: tempo,
     duration: duration,
     capo: capo,
+    tags: tags,
     other: other,
   );
 }

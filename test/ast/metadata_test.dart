@@ -42,5 +42,17 @@ void main() {
       final song = ChordPro.parseSong('plain lyrics with no directives');
       expect(song.metadata.isEmpty, isTrue);
     });
+
+    test('captures sortartist scalar', () {
+      final song = ChordPro.parseSong('{sortartist: Dylan, Bob}');
+      expect(song.metadata.sortArtist, 'Dylan, Bob');
+      expect(song.metadata.isEmpty, isFalse);
+    });
+
+    test('collects tag list in source order', () {
+      const source = '{tag: holiday}\n{tag: acoustic}';
+      final song = ChordPro.parseSong(source);
+      expect(song.metadata.tags, ['holiday', 'acoustic']);
+    });
   });
 }
