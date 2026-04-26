@@ -111,6 +111,9 @@ _Parsed? _parseInner(String inner) {
   if (head.isEmpty) return null;
 
   // Split selector off head.
+  // Spec form is `name-selector` (positive) or `name-!selector` (negative).
+  // The legacy `name+selector` form is also accepted for backwards
+  // compatibility and treated as a negation.
   var polarity = Polarity.none;
   String? selector;
   var name = head;
@@ -122,12 +125,17 @@ _Parsed? _parseInner(String inner) {
           ? plus
           : -1;
   if (sep > 0) {
-    final sel = head.substring(sep + 1).trim();
+    var sel = head.substring(sep + 1).trim();
+    final isLegacyPlus = head.codeUnitAt(sep) == 0x2B;
+    var negated = isLegacyPlus;
+    if (!isLegacyPlus && sel.startsWith('!')) {
+      sel = sel.substring(1).trim();
+      negated = true;
+    }
     if (sel.isNotEmpty) {
       name = head.substring(0, sep).trim();
       selector = sel.toLowerCase();
-      polarity =
-          head.codeUnitAt(sep) == 0x2D ? Polarity.positive : Polarity.negative;
+      polarity = negated ? Polarity.negative : Polarity.positive;
     }
   }
 

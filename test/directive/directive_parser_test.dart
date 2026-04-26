@@ -40,9 +40,15 @@ void main() {
       expect(d.value, 'Fancy');
     });
 
-    test('captures negative selector', () {
+    test('captures negative selector via legacy + form', () {
       final d = parseDirectiveLine(_line('{title+pdf: Plain}'))!;
       expect(d.selector, 'pdf');
+      expect(d.polarity, Polarity.negative);
+    });
+
+    test('captures spec-form ! negation', () {
+      final d = parseDirectiveLine(_line('{title-!guitar: Plain}'))!;
+      expect(d.selector, 'guitar');
       expect(d.polarity, Polarity.negative);
     });
 
