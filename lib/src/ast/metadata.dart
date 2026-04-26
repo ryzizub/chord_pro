@@ -22,6 +22,7 @@ class Metadata {
     this.tempo,
     this.duration,
     this.capo,
+    this.transpose,
     this.tags = const [],
     this.other = const {},
   });
@@ -71,6 +72,12 @@ class Metadata {
   /// Capo fret number.
   final int? capo;
 
+  /// Transposition in semitones (`{transpose: N}`).
+  ///
+  /// Captures the value declared in source. Use `Song.transposed` to
+  /// apply it to chord tokens.
+  final int? transpose;
+
   /// Free-form tags (`{tag}`), preserved in source order.
   final List<String> tags;
 
@@ -94,6 +101,7 @@ class Metadata {
       tempo == null &&
       duration == null &&
       capo == null &&
+      transpose == null &&
       tags.isEmpty &&
       other.isEmpty;
 }
@@ -115,7 +123,7 @@ const Set<String> _listMetadataNames = {
   'tag',
 };
 
-const Set<String> _intMetadataNames = {'year', 'tempo', 'capo'};
+const Set<String> _intMetadataNames = {'year', 'tempo', 'capo', 'transpose'};
 
 const Set<String> _scalarMetadataNames = {
   'sorttitle',
@@ -159,6 +167,7 @@ Metadata reduceMetadata(
   int? tempo;
   String? duration;
   int? capo;
+  int? transpose;
 
   for (final d in directives) {
     if (d.selector != null) {
@@ -216,6 +225,8 @@ Metadata reduceMetadata(
           tempo = n;
         case 'capo':
           capo = n;
+        case 'transpose':
+          transpose = n;
       }
     } else {
       (other[name] ??= []).add(value);
@@ -238,6 +249,7 @@ Metadata reduceMetadata(
     tempo: tempo,
     duration: duration,
     capo: capo,
+    transpose: transpose,
     tags: tags,
     other: other,
   );

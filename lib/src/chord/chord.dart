@@ -10,6 +10,15 @@ enum ChordSystem {
   roman,
 }
 
+/// How to spell a chromatic root note when transposing.
+enum AccidentalPreference {
+  /// Spell with sharps (`C#`, `D#`, `F#`, `G#`, `A#`).
+  sharps,
+
+  /// Spell with flats (`Db`, `Eb`, `Gb`, `Ab`, `Bb`).
+  flats,
+}
+
 /// A parsed chord.
 ///
 /// Chord parsing is intentionally forgiving: unrecognised input is
@@ -87,9 +96,93 @@ class Chord {
     );
   }
 
+  /// Transposes the chord by [semitones].
+  ///
+  /// Letter chords are remapped through the chromatic scale; chords in
+  /// other systems are returned unchanged because Nashville and Roman
+  /// notation already abstract over key. Returns `this` when the root
+  /// is unrecognised.
+  Chord transpose(
+    int semitones, {
+    AccidentalPreference accidentals = AccidentalPreference.sharps,
+  }) {
+    if (system != ChordSystem.letter) return this;
+    final newRoot = transposeRoot(root, semitones, accidentals: accidentals);
+    if (newRoot == null) return this;
+    final newBass = bass?.transpose(semitones, accidentals: accidentals);
+    final raw = _renderLetter(newRoot, quality, extensions, newBass);
+    return Chord(
+      system: system,
+      root: newRoot,
+      quality: quality,
+      extensions: extensions,
+      bass: newBass,
+      raw: raw,
+    );
+  }
+
   @override
   String toString() => raw;
 }
+
+/// Transposes a single root spelling such as `F#` or `Bb` by
+/// [semitones], returning the transposed spelling or `null` when
+/// [root] is not a recognised letter root.
+String? transposeRoot(
+  String root,
+  int semitones, {
+  AccidentalPreference accidentals = AccidentalPreference.sharps,
+}) {
+  final s = _rootToSemitone[root];
+  if (s == null) return null;
+  final shifted = (s + semitones) % 12;
+  final positive = shifted < 0 ? shifted + 12 : shifted;
+  return accidentals == AccidentalPreference.flats
+      ? _semitoneToFlat[positive]
+      : _semitoneToSharp[positive];
+}
+
+String _renderLetter(
+  String root,
+  String? quality,
+  List<String> extensions,
+  Chord? bass,
+) {
+  final q = quality ?? '';
+  final ext = extensions.join();
+  final bassPart = bass == null ? '' : '/${bass.raw}';
+  return '$root$q$ext$bassPart';
+}
+
+const Map<String, int> _rootToSemitone = {
+  'C': 0,
+  'C#': 1,
+  'Db': 1,
+  'D': 2,
+  'D#': 3,
+  'Eb': 3,
+  'E': 4,
+  'F': 5,
+  'F#': 6,
+  'Gb': 6,
+  'G': 7,
+  'G#': 8,
+  'Ab': 8,
+  'A': 9,
+  'A#': 10,
+  'Bb': 10,
+  'B': 11,
+};
+
+const List<String> _semitoneToSharp = [
+  'C', 'C#', 'D', 'D#', 'E', 'F', // 0..5
+  'F#', 'G', 'G#', 'A', 'A#', 'B', // 6..11
+];
+
+const List<String> _semitoneToFlat = [
+  'C', 'Db', 'D', 'Eb', 'E', 'F', // 0..5
+  'Gb', 'G', 'Ab', 'A', 'Bb', 'B', // 6..11
+];
 
 class _Parsed {
   _Parsed(this.system, this.root, this.quality, this.extensions);

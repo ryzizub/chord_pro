@@ -51,4 +51,40 @@ void main() {
       expect(Chord.tryParse('?@!'), isNull);
     });
   });
+
+  group('Chord.transpose', () {
+    test('shifts a sharp letter chord up by semitones', () {
+      final c = Chord.tryParse('Cmaj7')!.transpose(2);
+      expect(c.root, 'D');
+      expect(c.raw, 'Dmaj7');
+    });
+
+    test('wraps around the octave', () {
+      final c = Chord.tryParse('B')!.transpose(1);
+      expect(c.root, 'C');
+    });
+
+    test('honours flat preference when requested', () {
+      final c = Chord.tryParse('C')!
+          .transpose(1, accidentals: AccidentalPreference.flats);
+      expect(c.root, 'Db');
+    });
+
+    test('transposes the bass note too', () {
+      final c = Chord.tryParse('G/B')!.transpose(2);
+      expect(c.root, 'A');
+      expect(c.bass?.root, 'C#');
+      expect(c.raw, 'A/C#');
+    });
+
+    test('leaves Nashville chords unchanged', () {
+      final c = Chord.tryParse('4m')!.transpose(3);
+      expect(c.raw, '4m');
+    });
+
+    test('leaves Roman chords unchanged', () {
+      final c = Chord.tryParse('IV')!.transpose(3);
+      expect(c.raw, 'IV');
+    });
+  });
 }
