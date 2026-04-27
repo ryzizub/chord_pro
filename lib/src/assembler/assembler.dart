@@ -15,7 +15,18 @@ import 'package:chord_pro/src/source/scanner.dart';
 import 'package:chord_pro/src/source/source_span.dart';
 
 /// Parses [source] into one or more [Song]s plus diagnostics.
-ParseResult assemble(String source) {
+///
+/// [selectors] names the conditional selectors that should be treated as
+/// active when reducing metadata and formatting directives. Matching is
+/// case-insensitive; selectors are folded to lower-case to match what the
+/// directive parser stores.
+ParseResult assemble(
+  String source, {
+  Set<String> selectors = const {},
+}) {
+  final activeSelectors = selectors.isEmpty
+      ? const <String>{}
+      : {for (final s in selectors) s.toLowerCase()};
   final lines = scan(source);
   final diagnostics = <Diagnostic>[];
   final songs = <Song>[];
@@ -50,11 +61,17 @@ ParseResult assemble(String source) {
     }
     songs.add(
       Song(
-        metadata: reduceMetadata(_expandMeta(directives, diagnostics)),
+        metadata: reduceMetadata(
+          _expandMeta(directives, diagnostics),
+          includeSelected: activeSelectors,
+        ),
         directives: List.unmodifiable(directives),
         sections: List.unmodifiable(sections),
         chordDefinitions: List.unmodifiable(chordDefs),
-        formatting: reduceFormatting(directives),
+        formatting: reduceFormatting(
+          directives,
+          includeSelected: activeSelectors,
+        ),
       ),
     );
     directives = <Directive>[];

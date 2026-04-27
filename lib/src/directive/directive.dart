@@ -68,7 +68,7 @@ class Directive {
         ? ''
         : polarity == Polarity.positive
             ? '-$selector'
-            : '+$selector';
+            : '-!$selector';
     final v = value == null ? '' : ': $value';
     return '{$name$sel$v}';
   }

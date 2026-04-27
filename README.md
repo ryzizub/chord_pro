@@ -42,15 +42,21 @@ for (final song in result.songs) {
 
 // Transposition.
 final upTwo = ChordPro.parseSong(source).transposed(2);
+
+// Conditional selectors (e.g. instrument-specific titles).
+final guitar = ChordPro.parseSong(source, selectors: {'guitar'});
 ```
 
 `ChordPro.parse` returns a `ParseResult` with every song in the
 document (split on `{new_song}` / `{ns}`) plus any diagnostics.
 `ChordPro.parseSong` is a convenience that returns the first song.
+Pass `selectors:` to activate conditional directives — see below.
 
 Each `Song` exposes:
-- `metadata` — typed `Metadata` with titles, artists, key, tempo,
-  capo, transpose, columns, tags and more.
+- `metadata` — typed `Metadata` with titles, sort titles, subtitles,
+  artists, sort artist, composers, lyricists, copyright, album,
+  year, key, time, tempo, duration, capo, transpose, columns, tags
+  and an `other` map for anything custom.
 - `sections` — ordered `Section`s for verses, choruses, bridges,
   tabs, grids, abc, ly, svg, textblock and custom environments,
   plus loose lines.
@@ -69,16 +75,22 @@ Each `Song` exposes:
   `dim`, `aug`, `sus`, `add`, `ø`, `°`); slash bass notes; `NC`.
 - Section environments and chorus recall, plus delegated `abc`, `ly`,
   `svg` and `textblock` blocks captured verbatim.
-- All metadata directives from the spec, including `sortartist`,
-  `tag`, `transpose`, `columns`, plus `{meta: key value}` desugaring.
+- All metadata directives from the spec — `title`/`t`, `sorttitle`,
+  `subtitle`/`st`, `artist`, `sortartist`, `composer`, `lyricist`,
+  `copyright`, `album`, `year`, `key`, `time`, `tempo`, `duration`,
+  `capo`, `transpose`, `columns`/`col`, `tag` — plus `{meta: key
+  value}` desugaring.
 - Comment family (`{comment}`, `{ci}`, `{cb}`, `{highlight}`) emitted
   as in-flow comment lines.
 - `{image: …}` parsed into a typed `ImageDirective`.
 - Page-break and column-break directives as in-flow layout breaks.
 - Font/size/colour directives (`chordfont`, `textsize`,
-  `titlecolour`, …) reduced into `FormattingSettings`.
+  `titlecolour`, …) reduced into `FormattingSettings`. Both `colour`
+  and the American `color` spelling are accepted.
 - Conditional selectors with both spec-form `-!sel` and legacy `+sel`
-  negation.
+  negation; pass `selectors:` to `ChordPro.parse` to activate them
+  for typed metadata and formatting reduction.
+- Custom `x_*` extensions preserved on `Song.customExtensions`.
 - File-level `#` comments are dropped per spec.
 - Diagnostics with 1-based source spans for every problem.
 

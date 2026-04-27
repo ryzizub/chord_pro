@@ -26,7 +26,7 @@ void main() {
       expect(directive.toString(), '{title-guitar: Demo}');
     });
 
-    test('toString renders negative selector', () {
+    test('toString renders negative selector in spec form', () {
       const directive = Directive(
         name: 'title',
         span: span,
@@ -34,7 +34,7 @@ void main() {
         polarity: Polarity.negative,
         value: 'Demo',
       );
-      expect(directive.toString(), '{title+piano: Demo}');
+      expect(directive.toString(), '{title-!piano: Demo}');
     });
 
     test('isCustomExtension recognises x_* namespace', () {

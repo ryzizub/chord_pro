@@ -1,3 +1,13 @@
+## 0.3.0
+
+* Add `selectors:` argument to `ChordPro.parse` / `parseSong` so callers
+  can activate conditional directives. The same set is forwarded to
+  `reduceFormatting`, which now honours selector polarity. Matching is
+  case-insensitive.
+* `Directive.toString` emits the spec form `{name-!sel}` for negative
+  polarity instead of the legacy `+sel` form.
+* Drop the unused `collection` dependency.
+
 ## 0.2.0
 
 * Skip `#` file-comment lines per spec.
