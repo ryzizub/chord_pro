@@ -44,7 +44,13 @@ void main() {
       expect(d.polarity, Polarity.negative);
     });
 
-    test('captures spec-form ! negation', () {
+    test('captures spec-form postfix ! negation', () {
+      final d = parseDirectiveLine(_line('{title-guitar!: Plain}'))!;
+      expect(d.selector, 'guitar');
+      expect(d.polarity, Polarity.negative);
+    });
+
+    test('still accepts non-spec prefix !sel for backward compatibility', () {
       final d = parseDirectiveLine(_line('{title-!guitar: Plain}'))!;
       expect(d.selector, 'guitar');
       expect(d.polarity, Polarity.negative);

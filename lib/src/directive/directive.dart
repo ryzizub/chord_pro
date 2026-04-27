@@ -3,9 +3,12 @@ import 'package:chord_pro/src/source/source_span.dart';
 /// Polarity of a directive selector suffix.
 ///
 /// ChordPro spec form is `{name-sel: …}` (apply only when `sel` is
-/// active) and `{name-!sel: …}` (apply only when `sel` is *not*
-/// active). The legacy `{name+sel: …}` form is also accepted as a
-/// negation. Bare directives carry [Polarity.none].
+/// active) and `{name-sel!: …}` (apply only when `sel` is *not*
+/// active — note the `!` is **postfixed** on the selector per the
+/// reference parser). For backward compatibility with files written
+/// against earlier releases of this library, the non-spec forms
+/// `{name-!sel: …}` and `{name+sel: …}` are also accepted as
+/// negations on input. Bare directives carry [Polarity.none].
 enum Polarity {
   /// No selector suffix present.
   none,
@@ -13,8 +16,8 @@ enum Polarity {
   /// `-selector` form: active only when the selector is set.
   positive,
 
-  /// `-!selector` (or legacy `+selector`) form: active only when the
-  /// selector is not set.
+  /// `-selector!` (spec) or legacy `-!selector` / `+selector` forms:
+  /// active only when the selector is not set.
   negative,
 }
 
@@ -68,7 +71,7 @@ class Directive {
         ? ''
         : polarity == Polarity.positive
             ? '-$selector'
-            : '-!$selector';
+            : '-$selector!';
     final v = value == null ? '' : ': $value';
     return '{$name$sel$v}';
   }

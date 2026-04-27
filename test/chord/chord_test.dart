@@ -77,6 +77,16 @@ void main() {
       expect(Chord.tryParse('C°')!.quality, '°');
     });
 
+    test('parses spec chord qualifiers `^`, `h`, `0`', () {
+      // `^` is the spec-defined alternate for `maj`.
+      expect(Chord.tryParse('C^7')!.quality, '^');
+      expect(Chord.tryParse('C^7')!.extensions, ['7']);
+      // `h` is half-diminished.
+      expect(Chord.tryParse('Bh7')!.quality, 'h');
+      // `0` (literal zero) is diminished.
+      expect(Chord.tryParse('C0')!.quality, '0');
+    });
+
     test('parses NC as a no-chord marker', () {
       final c = Chord.tryParse('NC')!;
       expect(c.root, 'NC');

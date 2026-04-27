@@ -111,9 +111,11 @@ _Parsed? _parseInner(String inner) {
   if (head.isEmpty) return null;
 
   // Split selector off head.
-  // Spec form is `name-selector` (positive) or `name-!selector` (negative).
-  // The legacy `name+selector` form is also accepted for backwards
-  // compatibility and treated as a negation.
+  // Spec form (ChordPro reference): `name-selector` (positive) or
+  // `name-selector!` (negative — `!` is *postfixed* to the selector).
+  // For backward compatibility this parser also accepts two non-spec
+  // forms used by earlier releases of this library:
+  // `name-!selector` (prefix `!`) and the legacy `name+selector`.
   var polarity = Polarity.none;
   String? selector;
   var name = head;
@@ -128,6 +130,12 @@ _Parsed? _parseInner(String inner) {
     var sel = head.substring(sep + 1).trim();
     final isLegacyPlus = head.codeUnitAt(sep) == 0x2B;
     var negated = isLegacyPlus;
+    // Spec form: trailing `!` on the selector.
+    if (sel.length > 1 && sel.endsWith('!')) {
+      sel = sel.substring(0, sel.length - 1).trim();
+      negated = true;
+    }
+    // Non-spec leading `!` retained for backward compatibility.
     if (!isLegacyPlus && sel.startsWith('!')) {
       sel = sel.substring(1).trim();
       negated = true;
