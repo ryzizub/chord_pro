@@ -1,6 +1,6 @@
 name: chord_pro
 description: Library for parsing chordpro song format
-version: 0.1.0
+version: 0.2.0
 repository: https://github.com/ryzizub/chord_pro
 
 environment:
