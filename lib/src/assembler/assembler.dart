@@ -215,8 +215,7 @@ ParseResult assemble(String source) {
             ),
           );
         }
-        open!.endSpan = directive.span;
-        final s = open!.finish();
+        final s = open!.finish(directive.span);
         if (s != null) sections.add(s);
         open = null;
         continue;
@@ -359,7 +358,6 @@ class _OpenSection {
   final String? customKind;
   final String? label;
   final SourceSpan startSpan;
-  SourceSpan? endSpan;
   final List<Line> _lines = [];
 
   bool get isVerbatim =>
@@ -402,7 +400,7 @@ class _OpenSection {
     _lines.add(Line.layoutBreak(layoutBreak: kind, span: span));
   }
 
-  Section? finish() {
+  Section? finish([SourceSpan? endSpan]) {
     if (kind == SectionKind.loose && _lines.isEmpty) return null;
     final end = endSpan ?? (_lines.isNotEmpty ? _lines.last.span : startSpan);
     return Section(

@@ -68,10 +68,7 @@ class Song {
         )
         .toList(growable: false);
 
-    final newKey = metadata.key == null
-        ? null
-        : transposeRoot(metadata.key!, semitones, accidentals: accidentals) ??
-            metadata.key;
+    final newKey = _transposeKey(metadata.key, semitones, accidentals);
 
     return Song(
       metadata: Metadata(
@@ -101,6 +98,23 @@ class Song {
       formatting: formatting,
     );
   }
+}
+
+/// Transposes a metadata key spelling.
+///
+/// Letter-system spellings (`G`, `Am`, `F#m7`) are remapped through the
+/// chromatic scale, preserving any quality/extension suffix. Unrecognised
+/// or non-letter spellings (e.g. Nashville/Roman keys, free text) are
+/// returned verbatim so callers don't lose the original value.
+String? _transposeKey(
+  String? key,
+  int semitones,
+  AccidentalPreference accidentals,
+) {
+  if (key == null) return null;
+  final chord = Chord.tryParse(key);
+  if (chord == null || chord.system != ChordSystem.letter) return key;
+  return chord.transpose(semitones, accidentals: accidentals).raw;
 }
 
 Line _transposeLine(

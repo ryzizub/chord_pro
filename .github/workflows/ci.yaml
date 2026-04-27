@@ -1,0 +1,48 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Install dependencies
+        run: dart pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Static analysis
+        run: dart analyze --fatal-infos
+
+      - name: Run tests with coverage
+        run: |
+          dart pub global activate coverage
+          dart pub global run coverage:test_with_coverage
+
+      - name: Enforce minimum coverage
+        run: |
+          dart pub global activate coverage
+          LCOV=coverage/lcov.info
+          test -f "$LCOV"
+          awk -F: '/^LF:/{lf+=$2} /^LH:/{lh+=$2} END{
+            if (lf == 0) { print "no coverage data"; exit 1 }
+            pct = 100 * lh / lf
+            printf "coverage: %.2f%% (%d/%d)\n", pct, lh, lf
+            if (pct < 85) { print "below 85% threshold"; exit 1 }
+          }' "$LCOV"
