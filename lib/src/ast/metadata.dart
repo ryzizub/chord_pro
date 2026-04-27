@@ -250,13 +250,13 @@ Metadata reduceMetadata(
   }
 
   return Metadata(
-    titles: titles,
+    titles: List.unmodifiable(titles),
     sortTitle: sortTitle,
-    subtitles: subtitles,
-    artists: artists,
+    subtitles: List.unmodifiable(subtitles),
+    artists: List.unmodifiable(artists),
     sortArtist: sortArtist,
-    composers: composers,
-    lyricists: lyricists,
+    composers: List.unmodifiable(composers),
+    lyricists: List.unmodifiable(lyricists),
     copyright: copyright,
     album: album,
     year: year,
@@ -267,7 +267,12 @@ Metadata reduceMetadata(
     capo: capo,
     transpose: transpose,
     columns: columns,
-    tags: tags,
-    other: other,
+    tags: List.unmodifiable(tags),
+    other: Map.unmodifiable(
+      {
+        for (final e in other.entries)
+          e.key: List<String>.unmodifiable(e.value),
+      },
+    ),
   );
 }

@@ -66,8 +66,15 @@ const Map<String, String> _formattingAliases = {
 };
 
 /// Returns the formatting target + property when [name] is a known
-/// font/size/colour directive, or `null` otherwise. Both `colour` and
-/// the American `color` spelling are accepted on output.
+/// font/size/colour directive, or `null` otherwise.
+///
+/// The accepted target set is closed: `chord`, `chorus`, `footer`,
+/// `grid`, `tab`, `label`, `toc`, `text`, `title`. Names ending in
+/// `font` / `size` / `colour` / `color` for any other target are
+/// treated as unrelated directives and ignored — this avoids
+/// misinterpreting custom or future directives that happen to share a
+/// suffix. Both `colour` and the American `color` spelling are
+/// accepted on input; the returned property is always `colour`.
 ({String target, String property})? matchFormattingDirective(String name) {
   final canonical = _formattingAliases[name] ?? name;
   for (final suffix in const ['font', 'size', 'colour', 'color']) {
@@ -85,6 +92,11 @@ const Map<String, String> _formattingAliases = {
 }
 
 /// Reduces a stream of [Directive]s into a [FormattingSettings].
+///
+/// Only directives matching [matchFormattingDirective] (i.e. font/size/
+/// colour for the known target set) contribute; everything else is
+/// ignored without diagnostic since the same directive may carry
+/// meaning for another consumer.
 FormattingSettings reduceFormatting(Iterable<Directive> directives) {
   final byTarget = <String, FormattingProps>{};
   for (final d in directives) {

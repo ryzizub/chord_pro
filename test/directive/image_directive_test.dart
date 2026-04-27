@@ -1,5 +1,4 @@
 import 'package:chord_pro/chord_pro.dart';
-import 'package:chord_pro/src/directive/image_directive.dart';
 import 'package:test/test.dart';
 
 void main() {

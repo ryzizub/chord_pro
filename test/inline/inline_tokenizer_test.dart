@@ -1,5 +1,4 @@
 import 'package:chord_pro/chord_pro.dart';
-import 'package:chord_pro/src/source/raw_line.dart';
 import 'package:test/test.dart';
 
 RawLine _line(String text) => RawLine(number: 1, text: text);
