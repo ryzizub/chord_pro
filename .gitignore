@@ -11,3 +11,6 @@ pubspec.lock
 
 # Misc files
 .DS_Store
+
+# Coverage output
+coverage/

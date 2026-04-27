@@ -35,6 +35,8 @@ class ChordDefinition {
   final SourceSpan span;
 }
 
+final RegExp _whitespace = RegExp(r'\s+');
+
 /// Parses a `{define}` / `{chord}` value body.
 ///
 /// Returns `null` when the body is empty or has no name. Unknown
@@ -43,8 +45,7 @@ ChordDefinition? parseChordDefinition(
   String value, {
   required SourceSpan span,
 }) {
-  final tokens =
-      value.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
+  final tokens = value.split(_whitespace).where((t) => t.isNotEmpty).toList();
   if (tokens.isEmpty) return null;
 
   final name = tokens.first;
