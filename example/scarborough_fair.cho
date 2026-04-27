@@ -1,0 +1,30 @@
+{title: Scarborough Fair}
+{artist: Traditional}
+{composer: Anonymous}
+{lyricist: Anonymous}
+{key: Em}
+{time: 3/4}
+{tempo: 96}
+{capo: 4}
+{x_difficulty: easy}
+
+{define: Em base-fret 1 frets 0 2 2 0 0 0}
+{define: D base-fret 1 frets x x 0 2 3 2}
+
+{start_of_verse: Verse 1}
+Are you [Em]going to [D]Scarborough [Em]Fair?
+[Em]Parsley, [G]sage, rose[A]mary and [Em]thyme
+Re[Em]member me to [G]one who lives [A]there
+For [Em]once she was a [D]true love of [Em]mine
+{end_of_verse}
+
+{start_of_chorus}
+[Em]Tell her to [D]make me a [Em]cambric shirt
+[Em]Parsley, [G]sage, rose[A]mary and [Em]thyme
+{end_of_chorus}
+
+{start_of_tab}
+e|--0--2--3--2--0--|
+B|--0--3--3--3--0--|
+G|--0--2--0--2--0--|
+{end_of_tab}

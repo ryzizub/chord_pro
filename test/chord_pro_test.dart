@@ -49,5 +49,46 @@ void main() {
       expect(song.metadata.key, 'G');
       expect(song.metadata.tempo, 68);
     });
+
+    test('parses the House of the Rising Sun example', () {
+      final source =
+          File('example/house_of_the_rising_sun.cho').readAsStringSync();
+      final song = ChordPro.parseSong(source);
+      expect(song.metadata.titles.single, 'The House of the Rising Sun');
+      expect(song.metadata.subtitles, ['Traditional']);
+      expect(song.metadata.artists, ['The Animals']);
+      expect(song.metadata.key, 'Am');
+      expect(song.metadata.time, '6/8');
+      expect(song.metadata.tempo, 76);
+      expect(song.metadata.capo, 0);
+
+      final verses =
+          song.sections.where((s) => s.kind == SectionKind.verse).toList();
+      expect(verses, hasLength(2));
+      expect(verses.map((s) => s.label), ['Verse 1', 'Verse 2']);
+    });
+
+    test('parses the Scarborough Fair example', () {
+      final source = File('example/scarborough_fair.cho').readAsStringSync();
+      final song = ChordPro.parseSong(source);
+      expect(song.metadata.titles.single, 'Scarborough Fair');
+      expect(song.metadata.composers, ['Anonymous']);
+      expect(song.metadata.lyricists, ['Anonymous']);
+      expect(song.metadata.key, 'Em');
+      expect(song.metadata.time, '3/4');
+      expect(song.metadata.capo, 4);
+
+      expect(song.chordDefinitions.map((d) => d.name), ['Em', 'D']);
+
+      final kinds = song.sections.map((s) => s.kind).toList();
+      expect(kinds, contains(SectionKind.verse));
+      expect(kinds, contains(SectionKind.chorus));
+      expect(kinds, contains(SectionKind.tab));
+
+      expect(
+        song.customExtensions.map((d) => d.name),
+        ['x_difficulty'],
+      );
+    });
   });
 }
