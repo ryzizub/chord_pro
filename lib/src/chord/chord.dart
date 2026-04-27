@@ -291,6 +291,20 @@ bool _isAccidental(int c) =>
 
 bool _isWhitespace(int c) => c == 0x20 || c == 0x09;
 
+// Order matters: longer prefixes come first so `min` wins over `mi`,
+// `dim` over `d`, etc.
+//
+// Spec-listed (per chordpro.org/chordpro/chordpro-chords/):
+//   `m`, `mi`, `min`, `-` (minor)
+//   `maj`, `^` (major; `^` is the spec-defined alternate for `maj`)
+//   `dim`, `0` (diminished; `0` is literal digit zero)
+//   `h` (half-diminished)
+//   `aug`, `+`
+//   `sus`, `sus2`, `sus4`, `add`
+//
+// Non-spec extensions kept for ergonomic reasons:
+//   `ø` (common half-diminished glyph)
+//   `°` (common diminished glyph)
 const List<String> _qualities = [
   'maj',
   'min',
@@ -301,8 +315,11 @@ const List<String> _qualities = [
   'aug',
   'dim',
   'add',
-  'ø', // half-diminished
-  '°', // diminished
+  'ø', // half-diminished (non-spec; `h` is the spec marker)
+  '°', // diminished (non-spec; `0` and `dim` are spec)
+  '^', // major (spec alternate for `maj`)
   'm',
+  'h', // half-diminished (spec)
+  '0', // diminished (spec; literal zero)
   '-',
 ];

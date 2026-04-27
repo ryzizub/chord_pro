@@ -10,8 +10,23 @@ class ChordPro {
   ///
   /// Documents are split on `{new_song}` / `{ns}`; an empty document
   /// still yields a single empty [Song].
-  static ParseResult parse(String source) => assemble(source);
+  ///
+  /// [selectors] names the conditional selectors that should be treated
+  /// as active. Directives carrying a positive selector (`{title-print}`)
+  /// only contribute to typed metadata and formatting when the selector
+  /// is in this set; directives with a negative selector
+  /// (`{title-!print}` or legacy `{title+print}`) only contribute when it
+  /// is not.
+  static ParseResult parse(
+    String source, {
+    Set<String> selectors = const {},
+  }) =>
+      assemble(source, selectors: selectors);
 
   /// Convenience wrapper that returns the first song of [source].
-  static Song parseSong(String source) => parse(source).songs.first;
+  static Song parseSong(
+    String source, {
+    Set<String> selectors = const {},
+  }) =>
+      parse(source, selectors: selectors).songs.first;
 }

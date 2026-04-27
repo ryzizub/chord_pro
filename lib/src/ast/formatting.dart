@@ -97,10 +97,27 @@ const Map<String, String> _formattingAliases = {
 /// colour for the known target set) contribute; everything else is
 /// ignored without diagnostic since the same directive may carry
 /// meaning for another consumer.
-FormattingSettings reduceFormatting(Iterable<Directive> directives) {
+///
+/// Directives carrying a selector contribute when the selector polarity
+/// matches [includeSelected] — bare directives always apply, positive
+/// `-sel` only when `sel` is in the set, and negative `-!sel` (or legacy
+/// `+sel`) only when it is not.
+FormattingSettings reduceFormatting(
+  Iterable<Directive> directives, {
+  Set<String> includeSelected = const {},
+}) {
   final byTarget = <String, FormattingProps>{};
   for (final d in directives) {
     if (d.value == null) continue;
+    if (d.selector != null) {
+      final active = includeSelected.contains(d.selector);
+      final applies = switch (d.polarity) {
+        Polarity.positive => active,
+        Polarity.negative => !active,
+        Polarity.none => true,
+      };
+      if (!applies) continue;
+    }
     final match = matchFormattingDirective(d.name);
     if (match == null) continue;
     final current = byTarget[match.target] ?? const FormattingProps();

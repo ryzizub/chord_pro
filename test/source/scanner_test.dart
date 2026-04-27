@@ -34,5 +34,40 @@ void main() {
         true,
       ]);
     });
+
+    test(r'concatenates lines that end in `\` (ChordPro 6.01)', () {
+      final lines = scan('one\\\n   two\nthree');
+      expect(lines.map((l) => l.text).toList(), ['onetwo', 'three']);
+      expect(lines.first.number, 1);
+    });
+
+    test(r'continuation chains across multiple `\`-terminated lines', () {
+      final lines = scan('a\\\nb\\\n\tc\nd');
+      expect(lines.map((l) => l.text).toList(), ['abc', 'd']);
+    });
+
+    test(r'leaves an even-count trailing `\` alone (escaped backslash)', () {
+      final lines = scan(r'foo\\' '\nbar');
+      expect(lines.map((l) => l.text).toList(), [r'foo\\', 'bar']);
+    });
+
+    test(r'resolves `\uXXXX` escapes (ChordPro 6.01)', () {
+      // Source contains the literal six-char sequences
+      // backslash-u-0-0-e-9 and backslash-u-2-6-6-f. Built via
+      // codepoints to avoid the editor collapsing them.
+      final source = String.fromCharCodes(<int>[
+        0x43, 0x61, 0x66, // C a f
+        0x5C, 0x75, 0x30, 0x30, 0x65, 0x39, // \u00e9
+        0x20,
+        0x5C, 0x75, 0x32, 0x36, 0x36, 0x66, // \u266f
+      ]);
+      final lines = scan(source);
+      expect(lines.single.text, 'Café ♯');
+    });
+
+    test('leaves malformed unicode escapes alone', () {
+      final lines = scan(r'oops \uZZZZ');
+      expect(lines.single.text, r'oops \uZZZZ');
+    });
   });
 }

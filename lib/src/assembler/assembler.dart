@@ -15,7 +15,18 @@ import 'package:chord_pro/src/source/scanner.dart';
 import 'package:chord_pro/src/source/source_span.dart';
 
 /// Parses [source] into one or more [Song]s plus diagnostics.
-ParseResult assemble(String source) {
+///
+/// [selectors] names the conditional selectors that should be treated as
+/// active when reducing metadata and formatting directives. Matching is
+/// case-insensitive; selectors are folded to lower-case to match what the
+/// directive parser stores.
+ParseResult assemble(
+  String source, {
+  Set<String> selectors = const {},
+}) {
+  final activeSelectors = selectors.isEmpty
+      ? const <String>{}
+      : {for (final s in selectors) s.toLowerCase()};
   final lines = scan(source);
   final diagnostics = <Diagnostic>[];
   final songs = <Song>[];
@@ -24,6 +35,10 @@ ParseResult assemble(String source) {
   var sections = <Section>[];
   var chordDefs = <ChordDefinition>[];
   _OpenSection? open;
+  // Set when a `start_of_X-selector(!)` directive doesn't apply for the
+  // current selector set: every line until the matching `end_of_X` is
+  // suppressed (still appended to the directive stream for round-trip).
+  _StartKind? skipUntilEnd;
 
   void closeLoose() {
     if (open != null && open!.kind == SectionKind.loose) {
@@ -50,11 +65,17 @@ ParseResult assemble(String source) {
     }
     songs.add(
       Song(
-        metadata: reduceMetadata(_expandMeta(directives, diagnostics)),
+        metadata: reduceMetadata(
+          _expandMeta(directives, diagnostics),
+          includeSelected: activeSelectors,
+        ),
         directives: List.unmodifiable(directives),
         sections: List.unmodifiable(sections),
         chordDefinitions: List.unmodifiable(chordDefs),
-        formatting: reduceFormatting(directives),
+        formatting: reduceFormatting(
+          directives,
+          includeSelected: activeSelectors,
+        ),
       ),
     );
     directives = <Directive>[];
@@ -67,12 +88,46 @@ ParseResult assemble(String source) {
 
     final directive = parseDirectiveLine(line);
 
+    // Inside a selector-skipped section: consume until the matching end
+    // directive arrives. Every directive is still appended to the
+    // directive stream so that `Song.directives` is lossless.
+    final pending = skipUntilEnd;
+    if (pending != null) {
+      if (directive != null) {
+        directives.add(directive);
+        final endKind = _endKindOf(directive.name);
+        if (endKind != null &&
+            endKind.kind == pending.kind &&
+            (endKind.kind != SectionKind.custom ||
+                endKind.customKind == pending.customKind)) {
+          skipUntilEnd = null;
+        }
+      }
+      continue;
+    }
+
     if (directive != null) {
       directives.add(directive);
 
-      // Song boundary.
+      // Song boundary always applies regardless of selectors — splitting
+      // songs is structural, not conditional.
       if (directive.name == 'new_song' || directive.name == 'ns') {
         finishSong();
+        continue;
+      }
+
+      // Selector gate. Per spec, "all directives can be conditionally
+      // selected … selection applies to everything in the section, up to
+      // and including the final section end directive."
+      final applies = _selectorApplies(directive, activeSelectors);
+      if (!applies) {
+        final startKind = _startKindOf(directive.name);
+        if (startKind != null) {
+          skipUntilEnd = startKind;
+        }
+        // Non-section directives are simply suppressed; metadata and
+        // formatting reducers already filter selector-tagged directives
+        // independently from the directive stream.
         continue;
       }
 
@@ -312,6 +367,24 @@ CommentStyle? _commentStyleOf(String name) {
       return CommentStyle.highlight;
   }
   return null;
+}
+
+/// Returns whether [d]'s selector resolves against [active] selectors.
+///
+/// Per the ChordPro spec, a directive without a selector always applies;
+/// a positive selector (`{name-sel}`) applies when `sel` is in [active];
+/// a negative selector (spec-form `{name-sel!}`, or this library's
+/// non-spec `{name-!sel}` / `{name+sel}` legacy forms) applies when it
+/// is not.
+bool _selectorApplies(Directive d, Set<String> active) {
+  final sel = d.selector;
+  if (sel == null) return true;
+  final isActive = active.contains(sel);
+  return switch (d.polarity) {
+    Polarity.positive => isActive,
+    Polarity.negative => !isActive,
+    Polarity.none => true,
+  };
 }
 
 _StartKind? _endKindOf(String name) {

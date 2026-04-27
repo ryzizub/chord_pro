@@ -77,6 +77,37 @@ B|--1--|
       expect(section.lines.first.verbatim, 'e|--0--|');
     });
 
+    test('captures abc verbatim', () {
+      const source = '''
+{start_of_abc}
+X:1
+T:Sample
+{end_of_abc}
+''';
+      final song = ChordPro.parseSong(source);
+      final section = song.sections.single;
+      expect(section.kind, SectionKind.abc);
+      expect(section.lines.every((l) => l.isVerbatim), isTrue);
+      expect(section.lines.map((l) => l.verbatim).toList(), [
+        'X:1',
+        'T:Sample',
+      ]);
+    });
+
+    test('captures ly verbatim', () {
+      const source = r'''
+{start_of_ly}
+\version "2.20.0"
+\score { … }
+{end_of_ly}
+''';
+      final song = ChordPro.parseSong(source);
+      final section = song.sections.single;
+      expect(section.kind, SectionKind.ly);
+      expect(section.lines.every((l) => l.isVerbatim), isTrue);
+      expect(section.lines.first.verbatim, r'\version "2.20.0"');
+    });
+
     test('bare {chorus} is a chorus recall', () {
       final song = ChordPro.parseSong('{chorus}');
       expect(song.sections, hasLength(1));
