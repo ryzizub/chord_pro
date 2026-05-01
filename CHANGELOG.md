@@ -1,3 +1,12 @@
+## 0.5.0
+
+* Add `{arranger}` metadata directive
+  ([spec](https://github.com/ChordPro/chordpro/blob/master/docs/content/Directives-arranger.md)).
+  The `Metadata` class gains an `arrangers` field (a list, like `artists`
+  and `composers`). The directive is also recognised when desugared via
+  `{meta: arranger …}`. Previously the value fell silently into
+  `Metadata.other`.
+
 ## 0.4.0
 
 Spec-compliance pass against the ChordPro reference parser.

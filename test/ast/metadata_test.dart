@@ -55,6 +55,22 @@ void main() {
       expect(song.metadata.tags, ['holiday', 'acoustic']);
     });
 
+    test('collects arranger list in source order', () {
+      const source = '{arranger: Alice}\n{arranger: Bob}';
+      final song = ChordPro.parseSong(source);
+      expect(song.metadata.arrangers, ['Alice', 'Bob']);
+    });
+
+    test('{meta: arranger …} desugars into arrangers list', () {
+      final song = ChordPro.parseSong('{meta: arranger Eve}');
+      expect(song.metadata.arrangers, ['Eve']);
+    });
+
+    test('arranger populates isEmpty to false', () {
+      final song = ChordPro.parseSong('{arranger: Dave}');
+      expect(song.metadata.isEmpty, isFalse);
+    });
+
     test('keeps x_ custom extensions out of metadata.other', () {
       const source = '{x_myapp_id: 42}\n{mood: bright}';
       final song = ChordPro.parseSong(source);

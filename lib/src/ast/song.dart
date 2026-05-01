@@ -79,6 +79,7 @@ class Song {
         sortArtist: metadata.sortArtist,
         composers: metadata.composers,
         lyricists: metadata.lyricists,
+        arrangers: metadata.arrangers,
         copyright: metadata.copyright,
         album: metadata.album,
         year: metadata.year,

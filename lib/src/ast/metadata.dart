@@ -14,6 +14,7 @@ class Metadata {
     this.sortArtist,
     this.composers = const [],
     this.lyricists = const [],
+    this.arrangers = const [],
     this.copyright,
     this.album,
     this.year,
@@ -48,6 +49,9 @@ class Metadata {
 
   /// Lyricists (`{lyricist}`).
   final List<String> lyricists;
+
+  /// Arrangers (`{arranger}`).
+  final List<String> arrangers;
 
   /// Copyright string, stored verbatim.
   final String? copyright;
@@ -97,6 +101,7 @@ class Metadata {
       sortArtist == null &&
       composers.isEmpty &&
       lyricists.isEmpty &&
+      arrangers.isEmpty &&
       copyright == null &&
       album == null &&
       year == null &&
@@ -126,6 +131,7 @@ const Set<String> _listMetadataNames = {
   'artist',
   'composer',
   'lyricist',
+  'arranger',
   'tag',
 };
 
@@ -167,6 +173,7 @@ Metadata reduceMetadata(
   final artists = <String>[];
   final composers = <String>[];
   final lyricists = <String>[];
+  final arrangers = <String>[];
   final tags = <String>[];
   final other = <String, List<String>>{};
   String? sortTitle;
@@ -209,6 +216,8 @@ Metadata reduceMetadata(
           composers.add(value);
         case 'lyricist':
           lyricists.add(value);
+        case 'arranger':
+          arrangers.add(value);
         case 'tag':
           tags.add(value);
       }
@@ -257,6 +266,7 @@ Metadata reduceMetadata(
     sortArtist: sortArtist,
     composers: List.unmodifiable(composers),
     lyricists: List.unmodifiable(lyricists),
+    arrangers: List.unmodifiable(arrangers),
     copyright: copyright,
     album: album,
     year: year,

@@ -32,7 +32,7 @@ print(song.metadata.key);
 
 ### What a `Song` contains
 
-- **`metadata`** — typed `Metadata`: titles, sort titles, subtitles, artists, sort artist, composers, lyricists, copyright, album, year, key, time, tempo, duration, capo, transpose, columns, tags, plus an `other` map for anything custom.
+- **`metadata`** — typed `Metadata`: titles, sort titles, subtitles, artists, sort artist, composers, lyricists, arrangers, copyright, album, year, key, time, tempo, duration, capo, transpose, columns, tags, plus an `other` map for anything custom.
 - **`sections`** — ordered `Section`s for verse, chorus, bridge, tab, grid, abc, ly, svg, textblock, custom environments, and loose lines.
 - **`chordDefinitions`** — parsed `{define}` / `{chord}` bodies.
 - **`formatting`** — typed font / size / colour overrides for chord, text, title, chorus, label, and friends.
@@ -96,7 +96,7 @@ All facts per the [ChordPro chord reference][cp_chords] and [directive reference
 
 ### Directives
 
-- **Metadata** — `title` / `t`, `sorttitle`, `subtitle` / `st`, `artist`, `sortartist`, `composer`, `lyricist`, `copyright`, `album`, `year`, `key`, `time`, `tempo`, `duration`, `capo`, `transpose`, `columns` / `col`, `tag`, plus `{meta: key value}` desugaring.
+- **Metadata** — `title` / `t`, `sorttitle`, `subtitle` / `st`, `artist`, `sortartist`, `composer`, `lyricist`, `arranger`, `copyright`, `album`, `year`, `key`, `time`, `tempo`, `duration`, `capo`, `transpose`, `columns` / `col`, `tag`, plus `{meta: key value}` desugaring.
 - **Comments** — `{comment}`, `{ci}`, `{cb}`, `{highlight}` emit as in-flow comment lines.
 - **Images** — `{image: …}` parsed into a typed `ImageDirective`.
 - **Layout breaks** — `{new_page}`, `{new_physical_page}`, `{column_break}` emit as in-flow layout breaks.
