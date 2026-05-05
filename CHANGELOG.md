@@ -1,3 +1,18 @@
+## 0.5.0
+
+ChordPro 6 spec re-verification pass (May 2026).
+
+* Add `+` as a spec-listed augmented quality marker — spec equivalent of
+  `aug` (see <https://www.chordpro.org/chordpro/chordpro-chords/>).
+  Previously `C+` was mis-parsed with extensions `['+']`; it now yields
+  `quality: '+'` and empty extensions.
+* Add `ImageDirective.label` typed field — the `label=` attribute was
+  added to `{image}` in ChordPro 6.040
+  (<https://www.chordpro.org/chordpro/directives-image/>). The value was
+  already captured in `ImageDirective.attributes`; this adds a
+  convenience typed accessor to match `align`, `title`, and the other
+  named fields.
+
 ## 0.4.0
 
 Spec-compliance pass against the ChordPro reference parser.
