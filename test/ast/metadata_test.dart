@@ -71,6 +71,36 @@ void main() {
       expect(song.metadata.isEmpty, isFalse);
     });
 
+    test('reserves auto-generated meta names from .other', () {
+      const reserved = [
+        '_key',
+        'key.print',
+        'key.sound',
+        'key_actual',
+        'key_from',
+        'today',
+        'songindex',
+        'songsource',
+        'chords',
+        'numchords',
+        'pages',
+        'pageno',
+        'page.class',
+        'page.side',
+        'chordpro',
+        'chordpro.version',
+        'chordpro.songsource',
+      ];
+      for (final name in reserved) {
+        final song = ChordPro.parseSong('{meta: $name colliding}');
+        expect(
+          song.metadata.other.containsKey(name),
+          isFalse,
+          reason: '$name must not be writable from {meta:}',
+        );
+      }
+    });
+
     test('keeps x_ custom extensions out of metadata.other', () {
       const source = '{x_myapp_id: 42}\n{mood: bright}';
       final song = ChordPro.parseSong(source);
