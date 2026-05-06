@@ -6,13 +6,17 @@ import 'package:chord_pro/src/source/raw_line.dart';
 /// input produces an empty list; a trailing newline does not produce a
 /// trailing blank line.
 ///
-/// Per ChordPro 6.01:
+/// Per ChordPro 6.01 / 6.060:
 ///  - A line ending with `\` is continued by the following line; the
 ///    backslash and the leading whitespace of the next line are
 ///    discarded. The continued line keeps the line number where it
 ///    started.
 ///  - `\uXXXX` (4 hex digits) anywhere in the text is replaced by the
 ///    corresponding Unicode code point.
+///  - `\u{X+}` (1 or more hex digits in braces, ChordPro 6.060) is
+///    likewise replaced by the corresponding code point. UTF-16
+///    surrogate pairs `\uDXXX\uDYYY` are recombined into a single
+///    astral code point.
 List<RawLine> scan(String source) {
   if (source.isEmpty) return const [];
 
@@ -81,6 +85,42 @@ String _stripLead(String s) {
 }
 
 String _resolveUnicodeEscapes(String s) {
+  if (s.length < 6) return s;
+  // 1) Surrogate-pair recombination must run first so a high-low pair
+  //    becomes one astral code point rather than two BMP characters.
+  var t = _resolveSurrogatePairs(s);
+  // 2) Brace-form `\u{X+}` (1+ hex digits) — ChordPro 6.060.
+  t = _resolveBraceUnicode(t);
+  // 3) Legacy fixed 4-digit `\uXXXX`.
+  return _resolveFixedUnicode(t);
+}
+
+final RegExp _surrogatePair = RegExp(
+  r'\\u(d[89ab][0-9a-f]{2})\\u(d[cdef][0-9a-f]{2})',
+  caseSensitive: false,
+);
+
+String _resolveSurrogatePairs(String s) {
+  return s.replaceAllMapped(_surrogatePair, (m) {
+    final hi = int.parse(m.group(1)!, radix: 16);
+    final lo = int.parse(m.group(2)!, radix: 16);
+    final cp = 0x10000 + (hi - 0xD800) * 0x400 + (lo - 0xDC00);
+    return String.fromCharCode(cp);
+  });
+}
+
+final RegExp _braceUnicode =
+    RegExp(r'\\u\{([0-9a-f]+)\}', caseSensitive: false);
+
+String _resolveBraceUnicode(String s) {
+  return s.replaceAllMapped(_braceUnicode, (m) {
+    final cp = int.tryParse(m.group(1)!, radix: 16);
+    if (cp == null || cp < 0 || cp > 0x10FFFF) return m.group(0)!;
+    return String.fromCharCode(cp);
+  });
+}
+
+String _resolveFixedUnicode(String s) {
   if (s.length < 6) return s;
   final out = StringBuffer();
   var i = 0;
