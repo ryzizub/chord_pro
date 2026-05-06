@@ -1,3 +1,4 @@
+import 'package:chord_pro/src/directive/kv_parser.dart';
 import 'package:chord_pro/src/source/source_span.dart';
 
 /// Where an `{image}` is anchored on the page.
@@ -164,34 +165,7 @@ ImageDirective? parseImageDirective(
   required SourceSpan span,
 }) {
   if (value.isEmpty) return null;
-  final attrs = <String, String>{};
-  var i = 0;
-  while (i < value.length) {
-    final ch = value.codeUnitAt(i);
-    if (ch == 0x20 || ch == 0x09) {
-      i++;
-      continue;
-    }
-    final keyStart = i;
-    while (i < value.length) {
-      final c = value.codeUnitAt(i);
-      if (c == 0x3D || c == 0x20 || c == 0x09) break;
-      i++;
-    }
-    if (i == keyStart) {
-      i++;
-      continue;
-    }
-    final key = value.substring(keyStart, i).toLowerCase();
-    if (i < value.length && value.codeUnitAt(i) == 0x3D) {
-      i++;
-      final parsed = _readValue(value, i);
-      attrs[key] = parsed.value;
-      i = parsed.end;
-    } else {
-      attrs[key] = '';
-    }
-  }
+  final attrs = parseKv(value);
 
   return ImageDirective(
     span: span,
@@ -218,44 +192,4 @@ ImageDirective? parseImageDirective(
     omit: attrs['omit'],
     attributes: Map.unmodifiable(attrs),
   );
-}
-
-class _ValueRead {
-  _ValueRead(this.value, this.end);
-  final String value;
-  final int end;
-}
-
-_ValueRead _readValue(String s, int start) {
-  if (start >= s.length) return _ValueRead('', start);
-  final first = s.codeUnitAt(start);
-  if (first == 0x22 || first == 0x27) {
-    final quote = first;
-    final buffer = StringBuffer();
-    var i = start + 1;
-    while (i < s.length) {
-      final c = s.codeUnitAt(i);
-      if (c == 0x5C && i + 1 < s.length) {
-        buffer.writeCharCode(s.codeUnitAt(i + 1));
-        i += 2;
-        continue;
-      }
-      if (c == quote) {
-        return _ValueRead(buffer.toString(), i + 1);
-      }
-      buffer.writeCharCode(c);
-      i++;
-    }
-    return _ValueRead(buffer.toString(), i);
-  }
-  final end = _findUnquotedEnd(s, start);
-  return _ValueRead(s.substring(start, end), end);
-}
-
-int _findUnquotedEnd(String s, int start) {
-  for (var i = start; i < s.length; i++) {
-    final c = s.codeUnitAt(i);
-    if (c == 0x20 || c == 0x09) return i;
-  }
-  return s.length;
 }
