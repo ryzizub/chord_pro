@@ -1,3 +1,4 @@
+import 'package:chord_pro/src/ast/grid_attributes.dart';
 import 'package:chord_pro/src/ast/line.dart';
 import 'package:chord_pro/src/source/source_span.dart';
 
@@ -77,4 +78,10 @@ class Section {
   /// Keys are lowercased. Empty for sections without a start-directive
   /// body or whose body collapsed entirely into [label].
   final Map<String, String> attributes;
+
+  /// Typed grid attributes (shape, cc), only populated when
+  /// [kind] is [SectionKind.grid].
+  GridAttributes? get gridAttributes => kind == SectionKind.grid
+      ? GridAttributes.fromAttributes(attributes, label: label)
+      : null;
 }

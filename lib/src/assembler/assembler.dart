@@ -185,8 +185,12 @@ ParseResult assemble(
         // Parse the start-directive body as KV attributes per spec
         // (Song.pm:1382). The bare-value form
         // `{start_of_verse: Verse 1}` is treated as `label="Verse 1"`;
-        // an explicit `label="X"` always wins.
-        final attrs = parseKv(directive.value ?? '', defaultKey: 'label');
+        // for `start_of_grid` the legacy form `{sog: 4x4}` is treated
+        // as `shape="4x4"`. An explicit `label="X"` / `shape="X"`
+        // always wins.
+        final defaultKey =
+            startKind.kind == SectionKind.grid ? 'shape' : 'label';
+        final attrs = parseKv(directive.value ?? '', defaultKey: defaultKey);
         final label = attrs.remove('label');
         open = _OpenSection(
           kind: startKind.kind,

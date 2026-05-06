@@ -7,6 +7,7 @@
 library;
 
 export 'src/ast/formatting.dart' show FormattingProps, FormattingSettings;
+export 'src/ast/grid_attributes.dart' show GridAttributes;
 export 'src/ast/line.dart' show CommentStyle, LayoutBreak, Line, LineKind;
 export 'src/ast/metadata.dart' show Metadata;
 export 'src/ast/section.dart' show Section, SectionKind;
