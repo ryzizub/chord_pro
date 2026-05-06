@@ -1,3 +1,4 @@
+import 'package:chord_pro/src/ast/diagrams_setting.dart';
 import 'package:chord_pro/src/ast/formatting.dart';
 import 'package:chord_pro/src/ast/line.dart';
 import 'package:chord_pro/src/ast/metadata.dart';
@@ -19,6 +20,7 @@ class Song {
     this.formatting = const FormattingSettings(),
     this.tocSuppressed = false,
     this.titlesAlignment,
+    this.diagrams,
   });
 
   /// Structured metadata collected from the song's directives.
@@ -49,6 +51,12 @@ class Song {
   /// hint for the title block). `null` when no `{titles}` directive
   /// was seen or its value did not match `left|center|right`.
   final TitlesAlignment? titlesAlignment;
+
+  /// Last-seen `{diagrams}` (or `{g}` alias) setting.
+  ///
+  /// `null` when the song has no `{diagrams}` directive — callers
+  /// should treat that as "use the renderer's default".
+  final DiagramsSetting? diagrams;
 
   /// Directives in the `x_*` custom namespace, in source order.
   Iterable<Directive> get customExtensions =>
@@ -114,6 +122,7 @@ class Song {
       formatting: formatting,
       tocSuppressed: tocSuppressed,
       titlesAlignment: titlesAlignment,
+      diagrams: diagrams,
     );
   }
 }

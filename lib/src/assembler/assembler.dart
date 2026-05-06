@@ -1,3 +1,4 @@
+import 'package:chord_pro/src/ast/diagrams_setting.dart';
 import 'package:chord_pro/src/ast/formatting.dart';
 import 'package:chord_pro/src/ast/line.dart';
 import 'package:chord_pro/src/ast/metadata.dart';
@@ -46,6 +47,8 @@ ParseResult assemble(
   var pendingTocSuppressed = false;
   // Set by a `{titles}` directive in the current song.
   TitlesAlignment? titlesAlignment;
+  // Set by `{diagrams}` (or `{g}` alias) in the current song.
+  DiagramsSetting? diagrams;
 
   void closeLoose() {
     if (open != null && open!.kind == SectionKind.loose) {
@@ -85,10 +88,12 @@ ParseResult assemble(
         ),
         tocSuppressed: songs.isNotEmpty && pendingTocSuppressed,
         titlesAlignment: titlesAlignment,
+        diagrams: diagrams,
       ),
     );
     pendingTocSuppressed = false;
     titlesAlignment = null;
+    diagrams = null;
     directives = <Directive>[];
     sections = <Section>[];
     chordDefs = <ChordDefinition>[];
@@ -134,6 +139,13 @@ ParseResult assemble(
       // Song.pm:2204).
       if (directive.name == 'titles' && directive.value != null) {
         titlesAlignment = parseTitlesAlignment(directive.value!);
+        continue;
+      }
+
+      // Diagrams setting. `{g}` is the spec-listed shorthand for
+      // `{diagrams}` per Song.pm:1339.
+      if (directive.name == 'diagrams' || directive.name == 'g') {
+        diagrams = DiagramsSetting.fromValue(directive.value);
         continue;
       }
 

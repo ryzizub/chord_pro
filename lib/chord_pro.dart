@@ -6,6 +6,7 @@
 /// definitions, formatting settings and the raw directive stream.
 library;
 
+export 'src/ast/diagrams_setting.dart' show DiagramsPosition, DiagramsSetting;
 export 'src/ast/formatting.dart' show FormattingProps, FormattingSettings;
 export 'src/ast/grid_attributes.dart' show GridAttributes;
 export 'src/ast/line.dart' show CommentStyle, LayoutBreak, Line, LineKind;
