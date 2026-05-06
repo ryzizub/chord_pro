@@ -9,6 +9,7 @@ import 'package:chord_pro/src/diagnostic/parse_result.dart';
 import 'package:chord_pro/src/directive/directive.dart';
 import 'package:chord_pro/src/directive/directive_parser.dart';
 import 'package:chord_pro/src/directive/image_directive.dart';
+import 'package:chord_pro/src/directive/kv_parser.dart';
 import 'package:chord_pro/src/inline/inline_tokenizer.dart';
 import 'package:chord_pro/src/source/raw_line.dart';
 import 'package:chord_pro/src/source/scanner.dart';
@@ -181,10 +182,17 @@ ParseResult assemble(
           open = null;
         }
         closeLoose();
+        // Parse the start-directive body as KV attributes per spec
+        // (Song.pm:1382). The bare-value form
+        // `{start_of_verse: Verse 1}` is treated as `label="Verse 1"`;
+        // an explicit `label="X"` always wins.
+        final attrs = parseKv(directive.value ?? '', defaultKey: 'label');
+        final label = attrs.remove('label');
         open = _OpenSection(
           kind: startKind.kind,
           customKind: startKind.customKind,
-          label: directive.value,
+          label: label,
+          attributes: Map<String, String>.unmodifiable(attrs),
           startSpan: directive.span,
         );
         continue;
@@ -425,11 +433,13 @@ class _OpenSection {
     required this.startSpan,
     this.customKind,
     this.label,
+    this.attributes = const {},
   });
 
   final SectionKind kind;
   final String? customKind;
   final String? label;
+  final Map<String, String> attributes;
   final SourceSpan startSpan;
   final List<Line> _lines = [];
 
@@ -480,6 +490,7 @@ class _OpenSection {
       kind: kind,
       label: label,
       customKind: customKind,
+      attributes: attributes,
       lines: List.unmodifiable(_lines),
       span: SourceSpan(
         line: startSpan.line,
