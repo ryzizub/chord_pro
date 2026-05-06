@@ -142,10 +142,21 @@ ParseResult assemble(
         continue;
       }
 
-      // Diagrams setting. `{g}` is the spec-listed shorthand for
-      // `{diagrams}` per Song.pm:1339.
+      // Diagrams setting.
+      // `{g}` expands to `{diagrams}` per the abbrevs table (Song.pm).
+      // `{grid}` is a distinct directive that *enables* diagram display
+      // (`dir_grid` sets diagrams=1). `{no_grid}`/`{ng}` disable it
+      // (`dir_no_grid` sets diagrams=0) — ref. Song.pm abbrevs hash.
       if (directive.name == 'diagrams' || directive.name == 'g') {
         diagrams = DiagramsSetting.fromValue(directive.value);
+        continue;
+      }
+      if (directive.name == 'grid') {
+        diagrams = const DiagramsSetting(enabled: true);
+        continue;
+      }
+      if (directive.name == 'no_grid' || directive.name == 'ng') {
+        diagrams = const DiagramsSetting(enabled: false);
         continue;
       }
 

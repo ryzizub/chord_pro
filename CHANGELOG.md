@@ -1,3 +1,21 @@
+## Unreleased
+
+### Bug fixes / spec parity
+
+* `{grid}` now enables chord-diagram display (`Song.diagrams.enabled =
+  true`), matching the reference `dir_grid` handler (Song.pm). Previously
+  a bare `{grid}` directive was silently ignored.
+  Spec: <https://www.chordpro.org/chordpro/directives-diagrams/>
+* `{no_grid}` now disables chord-diagram display (`Song.diagrams.enabled =
+  false`), matching the reference `dir_no_grid` handler.
+  Spec: <https://www.chordpro.org/chordpro/directives-diagrams/>
+* `{ng}` is now recognised as the spec-listed abbreviation for `{no_grid}`
+  (from the Song.pm `%abbrevs` hash: `ng => "no_grid"`). Previously `{ng}`
+  was silently dropped.
+  Spec: <https://www.chordpro.org/chordpro/directives-diagrams/>
+
+---
+
 ## 0.5.0
 
 ChordPro 6 spec parity pass against the upstream reference parser

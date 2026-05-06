@@ -53,4 +53,29 @@ void main() {
       expect(ChordPro.parseSong('{title: A}').diagrams, isNull);
     });
   });
+
+  // ChordPro abbrevs: ng => no_grid; dir_grid enables, dir_no_grid disables.
+  // Spec ref: https://www.chordpro.org/chordpro/directives-diagrams/
+  group('{grid} / {no_grid} / {ng} (Song.pm abbrevs + dir_grid/dir_no_grid)', () {
+    test('{grid} enables diagram display', () {
+      final d = ChordPro.parseSong('{grid}').diagrams;
+      expect(d?.enabled, isTrue);
+      expect(d?.position, isNull);
+    });
+
+    test('{no_grid} disables diagram display', () {
+      expect(ChordPro.parseSong('{no_grid}').diagrams?.enabled, isFalse);
+    });
+
+    test('{ng} is the spec alias for {no_grid}', () {
+      expect(ChordPro.parseSong('{ng}').diagrams?.enabled, isFalse);
+    });
+
+    test('{grid} then {no_grid} — last writer wins', () {
+      expect(
+        ChordPro.parseSong('{grid}\n{no_grid}').diagrams?.enabled,
+        isFalse,
+      );
+    });
+  });
 }
