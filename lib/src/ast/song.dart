@@ -16,6 +16,7 @@ class Song {
     this.sections = const [],
     this.chordDefinitions = const [],
     this.formatting = const FormattingSettings(),
+    this.tocSuppressed = false,
   });
 
   /// Structured metadata collected from the song's directives.
@@ -35,6 +36,12 @@ class Song {
 
   /// Document-wide font/size/colour settings.
   final FormattingSettings formatting;
+
+  /// `true` when the song should be omitted from the table of
+  /// contents (set by the preceding `{ns toc=no}` /
+  /// `{new_song toc=false|0}`, ChordPro 6.040). Always `false` for
+  /// the first song in a document.
+  final bool tocSuppressed;
 
   /// Directives in the `x_*` custom namespace, in source order.
   Iterable<Directive> get customExtensions =>
@@ -98,6 +105,7 @@ class Song {
       sections: newSections,
       chordDefinitions: chordDefinitions,
       formatting: formatting,
+      tocSuppressed: tocSuppressed,
     );
   }
 }

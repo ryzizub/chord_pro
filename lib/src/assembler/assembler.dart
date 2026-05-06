@@ -40,6 +40,9 @@ ParseResult assemble(
   // current selector set: every line until the matching `end_of_X` is
   // suppressed (still appended to the directive stream for round-trip).
   _StartKind? skipUntilEnd;
+  // Set by a preceding `{ns toc=no}` (or false/0) — applied to the
+  // *next* song that opens. Reset after consumption.
+  var pendingTocSuppressed = false;
 
   void closeLoose() {
     if (open != null && open!.kind == SectionKind.loose) {
@@ -77,8 +80,10 @@ ParseResult assemble(
           directives,
           includeSelected: activeSelectors,
         ),
+        tocSuppressed: songs.isNotEmpty && pendingTocSuppressed,
       ),
     );
+    pendingTocSuppressed = false;
     directives = <Directive>[];
     sections = <Section>[];
     chordDefs = <ChordDefinition>[];
@@ -111,9 +116,12 @@ ParseResult assemble(
       directives.add(directive);
 
       // Song boundary always applies regardless of selectors — splitting
-      // songs is structural, not conditional.
+      // songs is structural, not conditional. The optional `toc=` attr
+      // (ChordPro 6.040) is captured for the *next* song.
       if (directive.name == 'new_song' || directive.name == 'ns') {
         finishSong();
+        final attrs = parseKv(directive.value ?? '');
+        pendingTocSuppressed = _isFalsy(attrs['toc']);
         continue;
       }
 
@@ -572,4 +580,14 @@ int _firstWhitespace(String s) {
     if (ch == 0x20 || ch == 0x09) return i;
   }
   return -1;
+}
+
+/// Returns `true` for `no`/`false`/`0` (case-insensitive). `null` and
+/// any other value returns `false`. Mirrors the semantics of the
+/// reference parser's `is_true()`/`!is_true()` for boolean attribute
+/// values like `{ns toc=no}`.
+bool _isFalsy(String? value) {
+  if (value == null) return false;
+  final v = value.trim().toLowerCase();
+  return v == 'no' || v == 'false' || v == '0' || v == 'off';
 }
