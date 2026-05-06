@@ -87,6 +87,19 @@ void main() {
       expect(Chord.tryParse('C0')!.quality, '0');
     });
 
+    test('parses `+` as augmented quality (spec alternate for `aug`)', () {
+      // `+` is the spec-defined alternate for `aug`.
+      final c = Chord.tryParse('C+')!;
+      expect(c.root, 'C');
+      expect(c.quality, '+');
+      expect(c.extensions, isEmpty);
+      // With extension.
+      final c7 = Chord.tryParse('C+7')!;
+      expect(c7.root, 'C');
+      expect(c7.quality, '+');
+      expect(c7.extensions, ['7']);
+    });
+
     test('parses NC as a no-chord marker', () {
       final c = Chord.tryParse('NC')!;
       expect(c.root, 'NC');

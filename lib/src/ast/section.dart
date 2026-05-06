@@ -1,4 +1,6 @@
+import 'package:chord_pro/src/ast/grid_attributes.dart';
 import 'package:chord_pro/src/ast/line.dart';
+import 'package:chord_pro/src/ast/textblock_attributes.dart';
 import 'package:chord_pro/src/source/source_span.dart';
 
 /// What kind of block a [Section] represents.
@@ -47,12 +49,14 @@ class Section {
     this.label,
     this.customKind,
     this.isChorusRecall = false,
+    this.attributes = const {},
   });
 
   /// Which environment produced this section.
   final SectionKind kind;
 
-  /// Optional label (e.g. `{sov: Verse 1}` → `"Verse 1"`).
+  /// Optional label (e.g. `{sov: Verse 1}` → `"Verse 1"`, or
+  /// `{start_of_verse: label="Verse 1"}` → `"Verse 1"`).
   final String? label;
 
   /// When [kind] is [SectionKind.custom], the raw custom name.
@@ -67,4 +71,24 @@ class Section {
   /// True when this section is a bare `{chorus}` recall rather than an
   /// authored chorus body.
   final bool isChorusRecall;
+
+  /// Any extra `key=value` attributes parsed from the start-of
+  /// directive body, **excluding** `label` (which is surfaced via the
+  /// dedicated [label] field).
+  ///
+  /// Keys are lowercased. Empty for sections without a start-directive
+  /// body or whose body collapsed entirely into [label].
+  final Map<String, String> attributes;
+
+  /// Typed grid attributes (shape, cc), only populated when
+  /// [kind] is [SectionKind.grid].
+  GridAttributes? get gridAttributes => kind == SectionKind.grid
+      ? GridAttributes.fromAttributes(attributes, label: label)
+      : null;
+
+  /// Typed textblock attributes, only populated when
+  /// [kind] is [SectionKind.textblock].
+  TextblockAttributes? get textblockAttributes => kind == SectionKind.textblock
+      ? TextblockAttributes.fromAttributes(attributes)
+      : null;
 }

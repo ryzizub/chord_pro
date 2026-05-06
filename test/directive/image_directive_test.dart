@@ -39,6 +39,17 @@ void main() {
       expect(image.attributes['frob'], '42');
     });
 
+    test('parses label attribute (added in ChordPro 6.040)', () {
+      final image = parseImageDirective(
+        'src=cover.png label="My Caption"',
+        span: span,
+      )!;
+      expect(image.src, 'cover.png');
+      expect(image.label, 'My Caption');
+      // Also present in the raw attributes map.
+      expect(image.attributes['label'], 'My Caption');
+    });
+
     test('returns null for an empty body', () {
       expect(parseImageDirective('', span: span), isNull);
     });

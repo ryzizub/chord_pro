@@ -32,12 +32,15 @@ print(song.metadata.key);
 
 ### What a `Song` contains
 
-- **`metadata`** — typed `Metadata`: titles, sort titles, subtitles, artists, sort artist, composers, lyricists, copyright, album, year, key, time, tempo, duration, capo, transpose, columns, tags, plus an `other` map for anything custom.
-- **`sections`** — ordered `Section`s for verse, chorus, bridge, tab, grid, abc, ly, svg, textblock, custom environments, and loose lines.
-- **`chordDefinitions`** — parsed `{define}` / `{chord}` bodies.
+- **`metadata`** — typed `Metadata`: titles, sort titles, subtitles, artists, sort artist, composers, lyricists, arrangers, copyright, album, year, key, time, tempo, duration, capo, transpose (plus `transposeQualifier`), columns, tags, plus an `other` map for anything custom.
+- **`sections`** — ordered `Section`s for verse, chorus, bridge, tab, grid, abc, ly, svg, textblock, custom environments, and loose lines. Each section exposes `label`, `attributes`, plus typed `gridAttributes` and `textblockAttributes` where applicable.
+- **`chordDefinitions`** — parsed `{define}` / `{chord}` bodies including `display`, `format`, `keys`, `copy`, `copyall`, `diagram`, and the transposable bracketed `[Name]` form.
 - **`formatting`** — typed font / size / colour overrides for chord, text, title, chorus, label, and friends.
 - **`directives`** — the raw directive stream in source order.
 - **`customExtensions`** — `x_*` namespaced directives.
+- **`tocSuppressed`** — `true` when `{ns toc=no}` requested the song be omitted from the table of contents.
+- **`titlesAlignment`** — typed `{titles}` alignment hint.
+- **`diagrams`** — typed `{diagrams}` (or `{g}`) setting (`enabled` flag plus position enum).
 - **`transposed(semitones)`** — returns a copy with every chord shifted.
 
 ### Walk sections and lines
@@ -92,14 +95,17 @@ All facts per the [ChordPro chord reference][cp_chords] and [directive reference
 - Minor variants: `m`, `mi`, `min`, `-`.
 - Major qualifier `maj` and the spec alternate `^`.
 - Diminished `dim` / `0`, half-diminished `h`.
-- `aug`, `sus`, `sus2`, `sus4`, `add`.
+- Augmented `aug` and the spec alternate `+`.
+- `sus`, `sus2`, `sus4`, `add`.
+- Emergency-bracket recovery (ChordPro 6.020/6.080): `[ ]+` and `[|]` parse as annotations; empty `[]` is a zero-width placeholder.
 
 ### Directives
 
-- **Metadata** — `title` / `t`, `sorttitle`, `subtitle` / `st`, `artist`, `sortartist`, `composer`, `lyricist`, `copyright`, `album`, `year`, `key`, `time`, `tempo`, `duration`, `capo`, `transpose`, `columns` / `col`, `tag`, plus `{meta: key value}` desugaring.
+- **Metadata** — `title` / `t`, `sorttitle`, `subtitle` / `st`, `artist`, `sortartist`, `composer`, `lyricist`, `arranger`, `copyright`, `album`, `year`, `key`, `time`, `tempo`, `duration`, `capo`, `transpose` (with optional `s`/`f`/`k`/`#`/`b`/`♯`/`♭` qualifier), `columns` / `col`, `tag`, plus `{meta: key value}` desugaring. Auto-generated names (`_key`, `key.print`, `today`, …) are reserved.
 - **Comments** — `{comment}`, `{ci}`, `{cb}`, `{highlight}` emit as in-flow comment lines.
-- **Images** — `{image: …}` parsed into a typed `ImageDirective`.
+- **Images** — `{image: …}` parsed into a typed `ImageDirective` with full attribute coverage: `src`, `width`, `height`, `scale`, `align`, `border`, `bordertrbl`, `title`, `label`, `href`, `id`, `chord`, `type`, `x`, `y`, `spread`, `center`, `persist`, `omit`, plus a validated `anchorEnum` (`paper` / `page` / `allpages` / `column` / `float` / `line`).
 - **Layout breaks** — `{new_page}`, `{new_physical_page}`, `{column_break}` emit as in-flow layout breaks.
+- **Output / song boundary** — `{ns toc=no}` (or `toc=false` / `toc=0`) sets `Song.tocSuppressed`. `{titles: left|center|right}` and `{diagrams: on|off|top|bottom|right|below}` (with `{g}` alias) become typed song-level settings.
 - **Formatting** — `chordfont`, `textsize`, `titlecolour`, … reduce into `FormattingSettings`. Both `colour` and `color` accepted.
 - **Custom** — `x_*` extensions preserved on `Song.customExtensions`.
 
@@ -108,6 +114,10 @@ All facts per the [ChordPro chord reference][cp_chords] and [directive reference
 - Built-in environments: `verse` / `sov`, `chorus` / `soc`, `bridge` / `sob`, `tab` / `sot`, `grid` / `sog`.
 - Delegated `abc`, `ly`, `svg`, `textblock` captured verbatim.
 - Custom `start_of_<name>` / `end_of_<name>` sections preserved with their custom kind.
+- `label="…"` attribute parsed for every `{start_of_*}` (alongside the legacy bare-value form).
+- `{start_of_grid}` exposes typed `shape` (left+measures × beats+right), `cc`, and `label` via `Section.gridAttributes`.
+- `{start_of_textblock}` exposes the full ChordPro 6.050 attribute set (textblock-specific plus image-inherited) via `Section.textblockAttributes`.
+- `{chorus}` recall accepts all four spec forms — `{chorus}`, `{chorus: Final}`, `{chorus: label="Final"}`, `{chorus label="Final"}`.
 
 ### Conditional selectors
 
@@ -117,6 +127,7 @@ All facts per the [ChordPro chord reference][cp_chords] and [directive reference
 ### Source features
 
 - ChordPro 6.01 scanner: trailing `\` line continuation and `\uXXXX` Unicode escapes anywhere in input text.
+- ChordPro 6.060 brace-form `\u{X+}` Unicode escape (1+ hex digits, supports surrogate-pair recombination).
 - File-level `#` comments dropped.
 - Diagnostics with 1-based source spans for every problem.
 
@@ -136,10 +147,10 @@ The parser is more lenient than the published spec in a few places. Each extensi
 
 ## Known limitations
 
-- Only the bare `{start_of_verse: Verse 1}` form maps to `Section.label`; the `label="value"` form is parsed as raw value text.
-- Pango-style markup (`<b>`, `<i>`, `<span …>`, `<sym …/>`, `<img …/>`, `<strut …/>`) inside lyrics and comments is preserved verbatim — no inline parsing.
-- `{define}`'s `format` argument and the associated `\%{` escape pass through as raw value text.
-- Legacy / no-op directives `pagetype`, `grid`, `no_grid`, `titles`, `diagrams` land in `Song.directives` only — no typed access.
+- Pango-style markup (`<b>`, `<i>`, `<span …>`, `<sym …/>`, `<img …/>`, `<strut …/>`) inside lyrics and comments is preserved verbatim — no inline parsing or rendering.
+- `{define format="…"}` is captured as a typed `String` but the `%{…}` substitutions inside it are not interpreted (rendering concern).
+- The directive parser closes on the first unescaped `}`, so attribute values cannot themselves contain a literal `}`.
+- `{pagetype}` lands in `Song.directives` only — no typed access.
 
 ## Example songs
 

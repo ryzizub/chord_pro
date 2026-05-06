@@ -6,11 +6,16 @@
 /// definitions, formatting settings and the raw directive stream.
 library;
 
+export 'src/ast/diagrams_setting.dart' show DiagramsPosition, DiagramsSetting;
 export 'src/ast/formatting.dart' show FormattingProps, FormattingSettings;
+export 'src/ast/grid_attributes.dart' show GridAttributes;
 export 'src/ast/line.dart' show CommentStyle, LayoutBreak, Line, LineKind;
 export 'src/ast/metadata.dart' show Metadata;
 export 'src/ast/section.dart' show Section, SectionKind;
 export 'src/ast/song.dart' show Song;
+export 'src/ast/textblock_attributes.dart' show TextblockAttributes;
+export 'src/ast/titles_alignment.dart' show TitlesAlignment;
+export 'src/ast/transpose_qualifier.dart' show TransposeQualifier;
 export 'src/chord/chord.dart'
     show AccidentalPreference, Chord, ChordSystem, transposeRoot;
 export 'src/chord/chord_definition.dart'
@@ -22,7 +27,7 @@ export 'src/directive/directive.dart' show Directive, Polarity;
 export 'src/directive/directive_parser.dart'
     show DirectiveMatch, parseDirectiveAt, parseDirectiveLine;
 export 'src/directive/image_directive.dart'
-    show ImageDirective, parseImageDirective;
+    show ImageAnchor, ImageDirective, parseImageDirective;
 export 'src/inline/inline_token.dart'
     show
         AnnotationToken,

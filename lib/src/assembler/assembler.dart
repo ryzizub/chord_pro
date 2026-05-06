@@ -1,14 +1,17 @@
+import 'package:chord_pro/src/ast/diagrams_setting.dart';
 import 'package:chord_pro/src/ast/formatting.dart';
 import 'package:chord_pro/src/ast/line.dart';
 import 'package:chord_pro/src/ast/metadata.dart';
 import 'package:chord_pro/src/ast/section.dart';
 import 'package:chord_pro/src/ast/song.dart';
+import 'package:chord_pro/src/ast/titles_alignment.dart';
 import 'package:chord_pro/src/chord/chord_definition.dart';
 import 'package:chord_pro/src/diagnostic/diagnostic.dart';
 import 'package:chord_pro/src/diagnostic/parse_result.dart';
 import 'package:chord_pro/src/directive/directive.dart';
 import 'package:chord_pro/src/directive/directive_parser.dart';
 import 'package:chord_pro/src/directive/image_directive.dart';
+import 'package:chord_pro/src/directive/kv_parser.dart';
 import 'package:chord_pro/src/inline/inline_tokenizer.dart';
 import 'package:chord_pro/src/source/raw_line.dart';
 import 'package:chord_pro/src/source/scanner.dart';
@@ -39,6 +42,13 @@ ParseResult assemble(
   // current selector set: every line until the matching `end_of_X` is
   // suppressed (still appended to the directive stream for round-trip).
   _StartKind? skipUntilEnd;
+  // Set by a preceding `{ns toc=no}` (or false/0) — applied to the
+  // *next* song that opens. Reset after consumption.
+  var pendingTocSuppressed = false;
+  // Set by a `{titles}` directive in the current song.
+  TitlesAlignment? titlesAlignment;
+  // Set by `{diagrams}` (or `{g}` alias) in the current song.
+  DiagramsSetting? diagrams;
 
   void closeLoose() {
     if (open != null && open!.kind == SectionKind.loose) {
@@ -76,8 +86,14 @@ ParseResult assemble(
           directives,
           includeSelected: activeSelectors,
         ),
+        tocSuppressed: songs.isNotEmpty && pendingTocSuppressed,
+        titlesAlignment: titlesAlignment,
+        diagrams: diagrams,
       ),
     );
+    pendingTocSuppressed = false;
+    titlesAlignment = null;
+    diagrams = null;
     directives = <Directive>[];
     sections = <Section>[];
     chordDefs = <ChordDefinition>[];
@@ -110,9 +126,26 @@ ParseResult assemble(
       directives.add(directive);
 
       // Song boundary always applies regardless of selectors — splitting
-      // songs is structural, not conditional.
+      // songs is structural, not conditional. The optional `toc=` attr
+      // (ChordPro 6.040) is captured for the *next* song.
       if (directive.name == 'new_song' || directive.name == 'ns') {
         finishSong();
+        final attrs = parseKv(directive.value ?? '');
+        pendingTocSuppressed = _isFalsy(attrs['toc']);
+        continue;
+      }
+
+      // Title-block alignment hint (legacy `{titles}` directive,
+      // Song.pm:2204).
+      if (directive.name == 'titles' && directive.value != null) {
+        titlesAlignment = parseTitlesAlignment(directive.value!);
+        continue;
+      }
+
+      // Diagrams setting. `{g}` is the spec-listed shorthand for
+      // `{diagrams}` per Song.pm:1339.
+      if (directive.name == 'diagrams' || directive.name == 'g') {
+        diagrams = DiagramsSetting.fromValue(directive.value);
         continue;
       }
 
@@ -151,15 +184,21 @@ ParseResult assemble(
         continue;
       }
 
-      // Chorus recall: bare `{chorus}` without an end directive.
-      if (directive.name == 'chorus' && directive.value == null) {
+      // Chorus recall: bare `{chorus}` (no value) and the labelled
+      // forms `{chorus: Final}` / `{chorus: label="Final"}` per
+      // ChordPro 6.060 (Song.pm:1755).
+      if (directive.name == 'chorus') {
         closeLoose();
+        final attrs = parseKv(directive.value ?? '', defaultKey: 'label');
+        final label = attrs.remove('label');
         sections.add(
           Section(
             kind: SectionKind.chorus,
             lines: const [],
             span: directive.span,
             isChorusRecall: true,
+            label: label,
+            attributes: Map<String, String>.unmodifiable(attrs),
           ),
         );
         continue;
@@ -181,10 +220,21 @@ ParseResult assemble(
           open = null;
         }
         closeLoose();
+        // Parse the start-directive body as KV attributes per spec
+        // (Song.pm:1382). The bare-value form
+        // `{start_of_verse: Verse 1}` is treated as `label="Verse 1"`;
+        // for `start_of_grid` the legacy form `{sog: 4x4}` is treated
+        // as `shape="4x4"`. An explicit `label="X"` / `shape="X"`
+        // always wins.
+        final defaultKey =
+            startKind.kind == SectionKind.grid ? 'shape' : 'label';
+        final attrs = parseKv(directive.value ?? '', defaultKey: defaultKey);
+        final label = attrs.remove('label');
         open = _OpenSection(
           kind: startKind.kind,
           customKind: startKind.customKind,
-          label: directive.value,
+          label: label,
+          attributes: Map<String, String>.unmodifiable(attrs),
           startSpan: directive.span,
         );
         continue;
@@ -425,11 +475,13 @@ class _OpenSection {
     required this.startSpan,
     this.customKind,
     this.label,
+    this.attributes = const {},
   });
 
   final SectionKind kind;
   final String? customKind;
   final String? label;
+  final Map<String, String> attributes;
   final SourceSpan startSpan;
   final List<Line> _lines = [];
 
@@ -480,6 +532,7 @@ class _OpenSection {
       kind: kind,
       label: label,
       customKind: customKind,
+      attributes: attributes,
       lines: List.unmodifiable(_lines),
       span: SourceSpan(
         line: startSpan.line,
@@ -551,4 +604,14 @@ int _firstWhitespace(String s) {
     if (ch == 0x20 || ch == 0x09) return i;
   }
   return -1;
+}
+
+/// Returns `true` for `no`/`false`/`0` (case-insensitive). `null` and
+/// any other value returns `false`. Mirrors the semantics of the
+/// reference parser's `is_true()`/`!is_true()` for boolean attribute
+/// values like `{ns toc=no}`.
+bool _isFalsy(String? value) {
+  if (value == null) return false;
+  final v = value.trim().toLowerCase();
+  return v == 'no' || v == 'false' || v == '0' || v == 'off';
 }

@@ -1,3 +1,67 @@
+## 0.5.0
+
+ChordPro 6 spec parity pass against the upstream reference parser
+(`ChordPro/chordpro` head, currently 6.101). Net additive surface — no
+breaking changes from 0.4.0.
+
+### New typed accessors
+
+* `Metadata.arrangers` (list, like `composers` and `lyricists`).
+  Spec: <https://www.chordpro.org/chordpro/directives-arranger/>.
+* `Metadata.transposeQualifier` (TransposeQualifier enum: `none`,
+  `sharps`, `flats`, `followKey`). Captures the postfix
+  `s | # | ♯ | f | b | ♭ | k` on `{transpose: N…}` per
+  `Transpose.pm:114`. The `k` qualifier was added in ChordPro 6.100.
+* `ImageDirective.label` (visible caption, ChordPro 6.040), `.href`
+  (6.060), `.x`, `.y`, `.spread`, `.bordertrbl`, `.center`, `.chord`,
+  `.type`, `.persist`, `.omit`.
+* `ImageDirective.anchorEnum` (`ImageAnchor` enum: `paper`, `page`,
+  `allpages`, `column`, `float`, `line`). `allpages` was added in
+  ChordPro 6.080.
+* `ChordDefinition.display` (5.989), `.format`, `.keys` (0.979),
+  `.copy`, `.copyall`, `.diagram` (6.010), `.isTransposable` (6.100).
+  Fingers may now be string letters (`A`–`M`, `O`–`W`, `Y`, `Z`) in
+  addition to integers and muted markers.
+* `Section.label` is now populated from `{start_of_*: label="…"}` as
+  well as the legacy bare-value form. `Section.attributes` exposes
+  any extra KV pairs.
+* `Section.gridAttributes` (`GridAttributes` with `shape`, `cc`,
+  `label` — `cc` defaults to `"grid"` per spec).
+* `Section.textblockAttributes` (`TextblockAttributes` covering the
+  full ChordPro 6.050 attribute set plus image-inherited fields).
+* `Song.tocSuppressed` (from `{ns toc=no}`, ChordPro 6.040).
+* `Song.titlesAlignment` (`TitlesAlignment.left|center|right`;
+  `centre` accepted as alias).
+* `Song.diagrams` (`DiagramsSetting{enabled, position}`; position
+  enum `top|bottom|right|below`). The `{g}` shorthand now aliases
+  `{diagrams}` per spec.
+
+### Parser / scanner
+
+* `+` accepted as an augmented quality marker (spec alternate for
+  `aug`). `C+` now parses as `quality: '+'` rather than
+  `extensions: ['+']`.
+* `\u{X+}` brace-form unicode escape (1+ hex digits, surrogates
+  recombined) added in ChordPro 6.060, alongside the existing
+  `\uXXXX` 4-digit form.
+* Empty `[]`, whitespace-only `[ ]+`, and pipe `[|]` chord brackets
+  are recognised per ChordPro 6.020/6.080 emergency rules:
+  whitespace-only and pipe become `AnnotationToken`s; empty `[]` is
+  a zero-width placeholder (no token emitted).
+* Auto-generated metadata names (`_key`, `key.print`, `key.sound`,
+  `today`, `songindex`, `chordpro.version`, …) are reserved — user
+  `{meta:}` cannot collide.
+* `{define}` fret values now accept `-1` (ChordPro 6.060) and `N`
+  (in addition to `x`/`X`/`-`).
+* Bracketed `{define: [Name] …}` form parses as transposable
+  (attributes discarded per spec).
+
+### Reference
+
+Verified against `lib/ChordPro/Song.pm` and
+`lib/ChordPro/Chords/Transpose.pm` at `ChordPro/chordpro` HEAD plus
+the upstream `Changes` file through 6.101 (2026-04-30).
+
 ## 0.4.0
 
 Spec-compliance pass against the ChordPro reference parser.

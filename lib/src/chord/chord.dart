@@ -299,7 +299,7 @@ bool _isWhitespace(int c) => c == 0x20 || c == 0x09;
 //   `maj`, `^` (major; `^` is the spec-defined alternate for `maj`)
 //   `dim`, `0` (diminished; `0` is literal digit zero)
 //   `h` (half-diminished)
-//   `aug`, `+`
+//   `aug`, `+` (augmented)
 //   `sus`, `sus2`, `sus4`, `add`
 //
 // Non-spec extensions kept for ergonomic reasons:
@@ -313,6 +313,7 @@ const List<String> _qualities = [
   'sus4',
   'sus',
   'aug',
+  '+', // augmented (spec alternate for `aug`)
   'dim',
   'add',
   'ø', // half-diminished (non-spec; `h` is the spec marker)

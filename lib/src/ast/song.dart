@@ -1,7 +1,9 @@
+import 'package:chord_pro/src/ast/diagrams_setting.dart';
 import 'package:chord_pro/src/ast/formatting.dart';
 import 'package:chord_pro/src/ast/line.dart';
 import 'package:chord_pro/src/ast/metadata.dart';
 import 'package:chord_pro/src/ast/section.dart';
+import 'package:chord_pro/src/ast/titles_alignment.dart';
 import 'package:chord_pro/src/chord/chord.dart';
 import 'package:chord_pro/src/chord/chord_definition.dart';
 import 'package:chord_pro/src/directive/directive.dart';
@@ -16,6 +18,9 @@ class Song {
     this.sections = const [],
     this.chordDefinitions = const [],
     this.formatting = const FormattingSettings(),
+    this.tocSuppressed = false,
+    this.titlesAlignment,
+    this.diagrams,
   });
 
   /// Structured metadata collected from the song's directives.
@@ -35,6 +40,23 @@ class Song {
 
   /// Document-wide font/size/colour settings.
   final FormattingSettings formatting;
+
+  /// `true` when the song should be omitted from the table of
+  /// contents (set by the preceding `{ns toc=no}` /
+  /// `{new_song toc=false|0}`, ChordPro 6.040). Always `false` for
+  /// the first song in a document.
+  final bool tocSuppressed;
+
+  /// Set by the `{titles}` directive (legacy/deprecated alignment
+  /// hint for the title block). `null` when no `{titles}` directive
+  /// was seen or its value did not match `left|center|right`.
+  final TitlesAlignment? titlesAlignment;
+
+  /// Last-seen `{diagrams}` (or `{g}` alias) setting.
+  ///
+  /// `null` when the song has no `{diagrams}` directive — callers
+  /// should treat that as "use the renderer's default".
+  final DiagramsSetting? diagrams;
 
   /// Directives in the `x_*` custom namespace, in source order.
   Iterable<Directive> get customExtensions =>
@@ -79,6 +101,7 @@ class Song {
         sortArtist: metadata.sortArtist,
         composers: metadata.composers,
         lyricists: metadata.lyricists,
+        arrangers: metadata.arrangers,
         copyright: metadata.copyright,
         album: metadata.album,
         year: metadata.year,
@@ -88,6 +111,7 @@ class Song {
         duration: metadata.duration,
         capo: metadata.capo,
         transpose: 0,
+        transposeQualifier: metadata.transposeQualifier,
         columns: metadata.columns,
         tags: metadata.tags,
         other: metadata.other,
@@ -96,6 +120,9 @@ class Song {
       sections: newSections,
       chordDefinitions: chordDefinitions,
       formatting: formatting,
+      tocSuppressed: tocSuppressed,
+      titlesAlignment: titlesAlignment,
+      diagrams: diagrams,
     );
   }
 }
