@@ -152,15 +152,21 @@ ParseResult assemble(
         continue;
       }
 
-      // Chorus recall: bare `{chorus}` without an end directive.
-      if (directive.name == 'chorus' && directive.value == null) {
+      // Chorus recall: bare `{chorus}` (no value) and the labelled
+      // forms `{chorus: Final}` / `{chorus: label="Final"}` per
+      // ChordPro 6.060 (Song.pm:1755).
+      if (directive.name == 'chorus') {
         closeLoose();
+        final attrs = parseKv(directive.value ?? '', defaultKey: 'label');
+        final label = attrs.remove('label');
         sections.add(
           Section(
             kind: SectionKind.chorus,
             lines: const [],
             span: directive.span,
             isChorusRecall: true,
+            label: label,
+            attributes: Map<String, String>.unmodifiable(attrs),
           ),
         );
         continue;
