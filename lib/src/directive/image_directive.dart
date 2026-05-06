@@ -18,6 +18,7 @@ class ImageDirective {
     this.align,
     this.border,
     this.title,
+    this.label,
     this.anchor,
     this.id,
   });
@@ -40,10 +41,15 @@ class ImageDirective {
   /// `border=` — frame width.
   final String? border;
 
-  /// `title=` — optional caption.
+  /// `title=` — optional caption (HTML `title` attribute).
   final String? title;
 
-  /// `anchor=` — `inline`, `float`, etc.
+  /// `label=` — visible caption rendered below the image.
+  ///
+  /// Added in ChordPro 6.040.
+  final String? label;
+
+  /// `anchor=` — `inline`, `float`, `allpages`, etc.
   final String? anchor;
 
   /// `id=` — caller-defined identifier.
@@ -103,6 +109,7 @@ ImageDirective? parseImageDirective(
     align: attrs['align'],
     border: attrs['border'],
     title: attrs['title'],
+    label: attrs['label'],
     anchor: attrs['anchor'],
     id: attrs['id'],
     attributes: Map.unmodifiable(attrs),
