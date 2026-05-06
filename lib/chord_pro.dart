@@ -12,6 +12,7 @@ export 'src/ast/line.dart' show CommentStyle, LayoutBreak, Line, LineKind;
 export 'src/ast/metadata.dart' show Metadata;
 export 'src/ast/section.dart' show Section, SectionKind;
 export 'src/ast/song.dart' show Song;
+export 'src/ast/textblock_attributes.dart' show TextblockAttributes;
 export 'src/ast/transpose_qualifier.dart' show TransposeQualifier;
 export 'src/chord/chord.dart'
     show AccidentalPreference, Chord, ChordSystem, transposeRoot;

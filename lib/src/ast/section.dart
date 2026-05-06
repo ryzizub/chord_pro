@@ -1,5 +1,6 @@
 import 'package:chord_pro/src/ast/grid_attributes.dart';
 import 'package:chord_pro/src/ast/line.dart';
+import 'package:chord_pro/src/ast/textblock_attributes.dart';
 import 'package:chord_pro/src/source/source_span.dart';
 
 /// What kind of block a [Section] represents.
@@ -83,5 +84,11 @@ class Section {
   /// [kind] is [SectionKind.grid].
   GridAttributes? get gridAttributes => kind == SectionKind.grid
       ? GridAttributes.fromAttributes(attributes, label: label)
+      : null;
+
+  /// Typed textblock attributes, only populated when
+  /// [kind] is [SectionKind.textblock].
+  TextblockAttributes? get textblockAttributes => kind == SectionKind.textblock
+      ? TextblockAttributes.fromAttributes(attributes)
       : null;
 }
