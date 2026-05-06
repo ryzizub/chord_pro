@@ -23,7 +23,7 @@ export 'src/directive/directive.dart' show Directive, Polarity;
 export 'src/directive/directive_parser.dart'
     show DirectiveMatch, parseDirectiveAt, parseDirectiveLine;
 export 'src/directive/image_directive.dart'
-    show ImageDirective, parseImageDirective;
+    show ImageAnchor, ImageDirective, parseImageDirective;
 export 'src/inline/inline_token.dart'
     show
         AnnotationToken,
