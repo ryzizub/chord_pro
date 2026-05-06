@@ -1,3 +1,4 @@
+import 'package:chord_pro/src/ast/transpose_qualifier.dart';
 import 'package:chord_pro/src/directive/directive.dart';
 
 /// Structured metadata collected from a song's directives.
@@ -24,6 +25,7 @@ class Metadata {
     this.duration,
     this.capo,
     this.transpose,
+    this.transposeQualifier = TransposeQualifier.none,
     this.columns,
     this.tags = const [],
     this.other = const {},
@@ -82,6 +84,13 @@ class Metadata {
   /// Captures the value declared in source. Use `Song.transposed` to
   /// apply it to chord tokens.
   final int? transpose;
+
+  /// Optional postfix qualifier on the transpose value (`s`/`f`/`k`
+  /// or their aliases `#`/`b`/`♯`/`♭`).
+  ///
+  /// Defaults to [TransposeQualifier.none] when no qualifier is
+  /// present. The `k` qualifier was added in ChordPro 6.100.
+  final TransposeQualifier transposeQualifier;
 
   /// Number of layout columns (`{columns: N}` / `{col: N}`).
   final int? columns;
@@ -143,6 +152,13 @@ const Set<String> _intMetadataNames = {
   'columns',
 };
 
+// `{transpose: N}` accepts an optional postfix qualifier per the
+// reference parser (`Transpose.pm:114`):
+// `^([-+]?\d+)(?:([s#♯])|([fb♭])|([k]))?$`. We accept `s`/`f`/`k` plus
+// their `#`/`b` ASCII aliases and the `♯`/`♭` glyph aliases.
+final RegExp _transposeRe =
+    RegExp(r'^([-+]?\d+)([sfk#b♯♭])?$', caseSensitive: false);
+
 const Set<String> _scalarMetadataNames = {
   'sorttitle',
   'sortartist',
@@ -187,6 +203,7 @@ Metadata reduceMetadata(
   String? duration;
   int? capo;
   int? transpose;
+  var transposeQualifier = TransposeQualifier.none;
   int? columns;
 
   for (final d in directives) {
@@ -239,6 +256,19 @@ Metadata reduceMetadata(
           duration = value;
       }
     } else if (_intMetadataNames.contains(name)) {
+      if (name == 'transpose') {
+        final m = _transposeRe.firstMatch(value);
+        if (m == null) continue;
+        transpose = int.parse(m.group(1)!);
+        final tag = m.group(2)?.toLowerCase();
+        transposeQualifier = switch (tag) {
+          's' || '#' || '♯' => TransposeQualifier.sharps,
+          'f' || 'b' || '♭' => TransposeQualifier.flats,
+          'k' => TransposeQualifier.followKey,
+          _ => TransposeQualifier.none,
+        };
+        continue;
+      }
       final n = int.tryParse(value);
       if (n == null) continue;
       switch (name) {
@@ -248,8 +278,6 @@ Metadata reduceMetadata(
           tempo = n;
         case 'capo':
           capo = n;
-        case 'transpose':
-          transpose = n;
         case 'columns':
           columns = n;
       }
@@ -276,6 +304,7 @@ Metadata reduceMetadata(
     duration: duration,
     capo: capo,
     transpose: transpose,
+    transposeQualifier: transposeQualifier,
     columns: columns,
     tags: List.unmodifiable(tags),
     other: Map.unmodifiable(
