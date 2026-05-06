@@ -2,6 +2,7 @@ import 'package:chord_pro/src/ast/formatting.dart';
 import 'package:chord_pro/src/ast/line.dart';
 import 'package:chord_pro/src/ast/metadata.dart';
 import 'package:chord_pro/src/ast/section.dart';
+import 'package:chord_pro/src/ast/titles_alignment.dart';
 import 'package:chord_pro/src/chord/chord.dart';
 import 'package:chord_pro/src/chord/chord_definition.dart';
 import 'package:chord_pro/src/directive/directive.dart';
@@ -17,6 +18,7 @@ class Song {
     this.chordDefinitions = const [],
     this.formatting = const FormattingSettings(),
     this.tocSuppressed = false,
+    this.titlesAlignment,
   });
 
   /// Structured metadata collected from the song's directives.
@@ -42,6 +44,11 @@ class Song {
   /// `{new_song toc=false|0}`, ChordPro 6.040). Always `false` for
   /// the first song in a document.
   final bool tocSuppressed;
+
+  /// Set by the `{titles}` directive (legacy/deprecated alignment
+  /// hint for the title block). `null` when no `{titles}` directive
+  /// was seen or its value did not match `left|center|right`.
+  final TitlesAlignment? titlesAlignment;
 
   /// Directives in the `x_*` custom namespace, in source order.
   Iterable<Directive> get customExtensions =>
@@ -106,6 +113,7 @@ class Song {
       chordDefinitions: chordDefinitions,
       formatting: formatting,
       tocSuppressed: tocSuppressed,
+      titlesAlignment: titlesAlignment,
     );
   }
 }

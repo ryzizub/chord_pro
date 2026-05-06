@@ -3,6 +3,7 @@ import 'package:chord_pro/src/ast/line.dart';
 import 'package:chord_pro/src/ast/metadata.dart';
 import 'package:chord_pro/src/ast/section.dart';
 import 'package:chord_pro/src/ast/song.dart';
+import 'package:chord_pro/src/ast/titles_alignment.dart';
 import 'package:chord_pro/src/chord/chord_definition.dart';
 import 'package:chord_pro/src/diagnostic/diagnostic.dart';
 import 'package:chord_pro/src/diagnostic/parse_result.dart';
@@ -43,6 +44,8 @@ ParseResult assemble(
   // Set by a preceding `{ns toc=no}` (or false/0) — applied to the
   // *next* song that opens. Reset after consumption.
   var pendingTocSuppressed = false;
+  // Set by a `{titles}` directive in the current song.
+  TitlesAlignment? titlesAlignment;
 
   void closeLoose() {
     if (open != null && open!.kind == SectionKind.loose) {
@@ -81,9 +84,11 @@ ParseResult assemble(
           includeSelected: activeSelectors,
         ),
         tocSuppressed: songs.isNotEmpty && pendingTocSuppressed,
+        titlesAlignment: titlesAlignment,
       ),
     );
     pendingTocSuppressed = false;
+    titlesAlignment = null;
     directives = <Directive>[];
     sections = <Section>[];
     chordDefs = <ChordDefinition>[];
@@ -122,6 +127,13 @@ ParseResult assemble(
         finishSong();
         final attrs = parseKv(directive.value ?? '');
         pendingTocSuppressed = _isFalsy(attrs['toc']);
+        continue;
+      }
+
+      // Title-block alignment hint (legacy `{titles}` directive,
+      // Song.pm:2204).
+      if (directive.name == 'titles' && directive.value != null) {
+        titlesAlignment = parseTitlesAlignment(directive.value!);
         continue;
       }
 
