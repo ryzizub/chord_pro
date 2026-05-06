@@ -9,6 +9,10 @@ import 'package:chord_pro/src/source/source_span.dart';
 /// Recognises:
 ///  - `[chord]` → [ChordToken]
 ///  - `[*marker]` → [AnnotationToken]
+///  - `[ ]+` (whitespace-only) and `[|]` (pipe-only) → [AnnotationToken]
+///    per ChordPro 6.020/6.080 emergency-bracket recovery
+///    (Song.pm:941–948)
+///  - `[]` (empty) → no token (zero-width placeholder)
 ///  - `{…}` embedded in the line → [InlineDirectiveToken]
 ///  - everything else → [TextToken]
 ///
@@ -63,8 +67,16 @@ List<InlineToken> tokenizeInline(RawLine line) {
         column: i + 1,
         length: closed - i + 1,
       );
-      if (inner.startsWith('*')) {
+      if (inner.isEmpty) {
+        // Empty `[]` is a zero-width placeholder per ChordPro 6.080
+        // emergency-bracket handling — emit no token.
+      } else if (inner.startsWith('*')) {
         out.add(AnnotationToken(text: inner.substring(1), span: span));
+      } else if (inner == '|' || _isWhitespaceOnly(inner)) {
+        // ChordPro 6.020/6.080 emergency-bracket: pipe-only or
+        // whitespace-only contents become an annotation
+        // (Song.pm:941–948).
+        out.add(AnnotationToken(text: inner, span: span));
       } else {
         out.add(
           ChordToken(raw: inner, chord: Chord.tryParse(inner), span: span),
@@ -102,6 +114,14 @@ List<InlineToken> tokenizeInline(RawLine line) {
 
   flushText(i);
   return out;
+}
+
+bool _isWhitespaceOnly(String s) {
+  for (var i = 0; i < s.length; i++) {
+    final c = s.codeUnitAt(i);
+    if (c != 0x20 && c != 0x09) return false;
+  }
+  return s.isNotEmpty;
 }
 
 int _findUnescaped(String text, int start, int target) {
