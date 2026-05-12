@@ -1249,32 +1249,15 @@ Swing low, sweet chariot,
       expect(r.songs.last.tocSuppressed, isTrue);
     });
 
-    test(
-      '[§1.8b] AUDIT: `toc=off` falsy keyword should also suppress',
-      () {
-        final r = ChordPro.parse('{ns toc=off}\n{title: B}');
-        expect(
-          r.songs.last.tocSuppressed,
-          isTrue,
-          reason: 'spec: `off` is a falsy keyword in key_value_pairs',
-        );
-      },
-      skip:
-          'AUDIT: `off`/`no`/`none` keyword set incomplete; parser only honours `no|false|0`',
-    );
+    test('[§1.8b] `toc=off` falsy keyword suppresses ToC', () {
+      final r = ChordPro.parse('{ns toc=off}\n{title: B}');
+      expect(r.songs.last.tocSuppressed, isTrue);
+    });
 
-    test(
-      '[§1.8c] AUDIT: `toc=none` falsy keyword should also suppress',
-      () {
-        final r = ChordPro.parse('{ns toc=none}\n{title: B}');
-        expect(
-          r.songs.last.tocSuppressed,
-          isTrue,
-          reason: 'spec: `none` is a falsy keyword in key_value_pairs',
-        );
-      },
-      skip: 'AUDIT: `none` keyword not recognised',
-    );
+    test('[§1.8c] `toc=none` falsy keyword suppresses ToC', () {
+      final r = ChordPro.parse('{ns toc=none}\n{title: B}');
+      expect(r.songs.last.tocSuppressed, isTrue);
+    });
 
     test('[§1.8d] numeric attribute with unit suffix preserved verbatim', () {
       // The parser does not interpret units; it stores the raw string.
@@ -1289,16 +1272,12 @@ Swing low, sweet chariot,
       }
     });
 
-    test(
-      '[§1.9] AUDIT: parser.altbrackets config (alternate chord brackets)',
-      () {
-        // Spec: parser.altbrackets in config replaces e.g. `«»` with `[`/`]`.
-        // No equivalent API on ChordPro.parse; flag as audit gap.
-        // Placeholder assertion so the test surfaces.
-        expect(true, isTrue);
-      },
-      skip: 'AUDIT: `parser.altbrackets` configuration option not implemented',
-    );
+    test('[§1.9] `parser.altbrackets` rewrites the configured pair', () {
+      final s = ChordPro.parseSong('«G»hello', altBrackets: '«»');
+      final tokens = s.sections.first.lines.first.tokens;
+      expect(tokens.first, isA<ChordToken>());
+      expect((tokens.first as ChordToken).raw, 'G');
+    });
   });
 
   // ---------------------------------------------------------------------
@@ -1355,63 +1334,35 @@ Swing low, sweet chariot,
       expect(s.metadata.other.containsKey('page.side'), isFalse);
     });
 
-    test(
-      '[§4-reserved.g] AUDIT: `instrument` should be reserved namespace',
-      () {
-        final s = ChordPro.parseSong('{meta: instrument guitar}');
-        expect(
-          s.metadata.other.containsKey('instrument'),
-          isFalse,
-          reason: 'spec: `instrument` is auto-populated; user assigns dropped',
-        );
-      },
-      skip: 'AUDIT: `instrument`/`tuning`/`user`/`page`/`pages`/`songindex`/ '
-          '`pagerange`/`chords`/`numchords` not in reserved set',
-    );
+    test('[§4-reserved.g] `instrument` is a reserved namespace', () {
+      final s = ChordPro.parseSong('{meta: instrument guitar}');
+      expect(s.metadata.other.containsKey('instrument'), isFalse);
+    });
 
-    test(
-      '[§4-reserved.h] AUDIT: `tuning` should be reserved namespace',
-      () {
-        final s = ChordPro.parseSong('{meta: tuning DGBE}');
-        expect(s.metadata.other.containsKey('tuning'), isFalse);
-      },
-      skip: 'AUDIT: `tuning` not in reserved set',
-    );
+    test('[§4-reserved.h] `tuning` is a reserved namespace', () {
+      final s = ChordPro.parseSong('{meta: tuning DGBE}');
+      expect(s.metadata.other.containsKey('tuning'), isFalse);
+    });
 
-    test(
-      '[§4-key.multi] AUDIT: `{key}` is multi-valued per spec',
-      () {
-        // Spec (directives-key/): "Multiple key specifications are
-        // possible, each specification is assumed to apply from where
-        // it was specified." Current `Metadata.key` is scalar — last
-        // value wins, source position is lost.
-        final s = ChordPro.parseSong('{key: C}\n[C]hi\n{key: G}\n[G]bye');
-        expect(
-          s.metadata.key,
-          'C',
-          reason:
-              'audit: should expose key changes positionally, not last-only',
-        );
-      },
-      skip: 'AUDIT: `Metadata.key` is scalar — multi-valued positional '
-          'rule not modelled',
-    );
+    test('[§4-key.multi] `{key}` is multi-valued per spec', () {
+      // Spec (directives-key/): "Multiple key specifications are
+      // possible, each specification is assumed to apply from where it
+      // was specified." `Metadata.keys` preserves source order; the
+      // scalar `Metadata.key` getter returns the first (primary) key.
+      final s = ChordPro.parseSong('{key: C}\n[C]hi\n{key: G}\n[G]bye');
+      expect(s.metadata.keys, ['C', 'G']);
+      expect(s.metadata.key, 'C');
+    });
 
-    test(
-      '[§4-sortartist.match] AUDIT: sortartist must match artist count',
-      () {
-        // Spec (directives-sortartist/): one sortartist per artist, in
-        // matching order. Library stores `sortArtist` as a single
-        // scalar, so it cannot encode the per-artist match.
-        final s = ChordPro.parseSong('{artist: A}\n{artist: B}\n'
-            '{sortartist: SA}\n{sortartist: SB}');
-        expect(s.metadata.artists, hasLength(2));
-        // Should expose both sortartists in order — currently scalar.
-        expect(s.metadata.sortArtist, isNotNull);
-      },
-      skip: 'AUDIT: `Metadata.sortArtist` is scalar — multi-value match '
-          'rule not modelled',
-    );
+    test('[§4-sortartist.match] sortartist matches artist count', () {
+      // Spec (directives-sortartist/): one sortartist per artist, in
+      // matching order. `Metadata.sortArtists` is a list preserving
+      // source order so the 1:1 mapping is encodable.
+      final s = ChordPro.parseSong('{artist: A}\n{artist: B}\n'
+          '{sortartist: SA}\n{sortartist: SB}');
+      expect(s.metadata.artists, ['A', 'B']);
+      expect(s.metadata.sortArtists, ['SA', 'SB']);
+    });
   });
 
   // ---------------------------------------------------------------------
@@ -1454,23 +1405,13 @@ hi
   // §8 additions — define / chord / transpose
   // ---------------------------------------------------------------------
   group('§8 additions', () {
-    test(
-      '[§8.1-base_fret-alias] AUDIT: `base_fret` (underscore) accepted',
-      () {
-        // Spec (directives-define/) uses both `base-fret` and `base_fret`
-        // interchangeably. Current parser keyword set only includes
-        // `base-fret`.
-        final s =
-            ChordPro.parseSong('{define: A base_fret 3 frets 0 2 2 1 0 0}');
-        expect(
-          s.chordDefinitions.single.baseFret,
-          3,
-          reason: 'spec: both spellings should yield the same baseFret',
-        );
-      },
-      skip: 'AUDIT: `base_fret` underscore alias not in keyword set '
-          '(only `base-fret`)',
-    );
+    test('[§8.1-base_fret-alias] `base_fret` (underscore) accepted', () {
+      // Spec (directives-define/) uses both `base-fret` and
+      // `base_fret` interchangeably. Both spellings reach the same
+      // typed field.
+      final s = ChordPro.parseSong('{define: A base_fret 3 frets 0 2 2 1 0 0}');
+      expect(s.chordDefinitions.single.baseFret, 3);
+    });
 
     test('[§8.1-format-store] format string captured verbatim', () {
       // Substitutions are not expanded by the parser; the rendering
@@ -1542,21 +1483,13 @@ hi
         .firstWhere((l) => l.kind == LineKind.image)
         .image!;
 
-    test(
-      '[§10-trbl.alias] AUDIT: `trbl=` accepted as alias for `bordertrbl=`',
-      () {
-        // The directives-image/ page uses `trbl=`; the cheat sheet uses
-        // `bordertrbl=`. A spec-conforming parser should accept both.
-        final s = ChordPro.parseSong('{image: src="x" trbl="tb"}');
-        expect(
-          firstImage(s).bordertrbl,
-          'tb',
-          reason: 'spec: `trbl=` is the directives-image/ name for the '
-              'border-edge attribute',
-        );
-      },
-      skip: 'AUDIT: `trbl=` alias not mapped to `bordertrbl`',
-    );
+    test('[§10-trbl.alias] `trbl=` accepted as alias for `bordertrbl=`', () {
+      // The directives-image/ page uses `trbl=`; the cheat sheet uses
+      // `bordertrbl=`. The parser accepts both names and surfaces them
+      // on the typed `bordertrbl` field.
+      final s = ChordPro.parseSong('{image: src="x" trbl="tb"}');
+      expect(firstImage(s).bordertrbl, 'tb');
+    });
 
     test('[§10-chord-inline] `chord=` belongs to inline `<img/>`, not block',
         () {
@@ -1654,19 +1587,15 @@ hi
     });
 
     // ---- §4 sorttitle multi-value invariant ---------------------------
-    test(
-      '[§4-sorttitle.match] AUDIT: sorttitle must match title count',
-      () {
-        // Spec (directives-sorttitle/): one sorttitle per title, in
-        // matching order. Library exposes scalar `sortTitle`.
-        final s = ChordPro.parseSong('{title: A}\n{title: B}\n'
-            '{sorttitle: SA}\n{sorttitle: SB}');
-        expect(s.metadata.titles, hasLength(2));
-        expect(s.metadata.sortTitle, isNotNull);
-      },
-      skip: 'AUDIT: `Metadata.sortTitle` is scalar — multi-value match '
-          'rule not modelled',
-    );
+    test('[§4-sorttitle.match] sorttitle matches title count', () {
+      // Spec (directives-sorttitle/): one sorttitle per title, in
+      // matching order. `Metadata.sortTitles` is a list preserving
+      // source order so the 1:1 mapping is encodable.
+      final s = ChordPro.parseSong('{title: A}\n{title: B}\n'
+          '{sorttitle: SA}\n{sorttitle: SB}');
+      expect(s.metadata.titles, ['A', 'B']);
+      expect(s.metadata.sortTitles, ['SA', 'SB']);
+    });
 
     // ---- §4 format-string conditional syntax (preserved verbatim) -----
     test(
@@ -1707,31 +1636,19 @@ hi
     );
 
     // ---- §6.4 chord-changes (cc) and `[^]` recall ---------------------
-    test(
-      '[§6.4-cc.named] AUDIT: `cc="Name"` declares a named chord-change set',
-      () {
-        // Experimental, since 6.070. Parser stores `cc` as a String on
-        // GridAttributes; spec semantics (named set lookup) not
-        // implemented.
-        final s = ChordPro.parseSong('{sog cc="Verse"}\n. .\n{eog}');
-        final g = s.sections.firstWhere((sec) => sec.kind == SectionKind.grid);
-        expect(g.gridAttributes?.cc, 'Verse');
-      },
-      skip: 'AUDIT: `cc="Name"` named-set semantics not implemented '
-          '(value preserved as String)',
-    );
+    test('[§6.4-cc.named] `cc="Name"` declares a named chord-change set', () {
+      final s = ChordPro.parseSong('{sog cc="Verse"}\n. .\n{eog}');
+      final g = s.sections.firstWhere((sec) => sec.kind == SectionKind.grid);
+      expect(g.gridAttributes?.ccName, 'Verse');
+      expect(g.gridAttributes?.ccProgression, isEmpty);
+    });
 
-    test(
-      '[§6.4-cc.progression] AUDIT: `cc="Name:C1 C2 …"` combined form',
-      () {
-        // Parser stores raw value; spec splits "Name:..." form into
-        // a name and a chord progression list.
-        final s = ChordPro.parseSong('{sog cc="Verse:C G Am F"}\n. .\n{eog}');
-        final g = s.sections.firstWhere((sec) => sec.kind == SectionKind.grid);
-        expect(g.gridAttributes?.cc, contains('C G Am F'));
-      },
-      skip: 'AUDIT: `cc="Name:progression"` form not parsed structurally',
-    );
+    test('[§6.4-cc.progression] `cc="Name:C1 C2 …"` combined form parsed', () {
+      final s = ChordPro.parseSong('{sog cc="Verse:C G Am F"}\n. .\n{eog}');
+      final g = s.sections.firstWhere((sec) => sec.kind == SectionKind.grid);
+      expect(g.gridAttributes?.ccName, 'Verse');
+      expect(g.gridAttributes?.ccProgression, ['C', 'G', 'Am', 'F']);
+    });
 
     test(
       '[§6.4-recall] AUDIT: `[^]` token recalls next chord from active cc set',

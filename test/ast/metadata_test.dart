@@ -83,13 +83,22 @@ void main() {
         'songsource',
         'chords',
         'numchords',
+        'page',
         'pages',
         'pageno',
+        'pagerange',
         'page.class',
         'page.side',
         'chordpro',
         'chordpro.version',
         'chordpro.songsource',
+        'instrument',
+        'instrument.type',
+        'instrument.description',
+        'tuning',
+        'user',
+        'user.name',
+        'user.fullname',
       ];
       for (final name in reserved) {
         final song = ChordPro.parseSong('{meta: $name colliding}');

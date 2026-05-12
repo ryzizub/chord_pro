@@ -128,6 +128,9 @@ class ImageDirective {
 
   /// `bordertrbl=` — selective border edges (string of `t`/`r`/`b`/`l`
   /// letters).
+  ///
+  /// Per the spec, the `directives-image/` page uses `trbl=` while the
+  /// cheat sheet uses `bordertrbl=`. Both names map to this field.
   final String? bordertrbl;
 
   /// `center=` — deprecated boolean alias for `align=center`.
@@ -184,7 +187,7 @@ ImageDirective? parseImageDirective(
     x: attrs['x'],
     y: attrs['y'],
     spread: attrs['spread'],
-    bordertrbl: attrs['bordertrbl'],
+    bordertrbl: attrs['bordertrbl'] ?? attrs['trbl'],
     center: attrs['center'],
     chord: attrs['chord'],
     type: attrs['type'],

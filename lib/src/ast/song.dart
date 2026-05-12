@@ -90,24 +90,26 @@ class Song {
         )
         .toList(growable: false);
 
-    final newKey = _transposeKey(metadata.key, semitones, accidentals);
+    final newKeys = metadata.keys
+        .map((k) => _transposeKey(k, semitones, accidentals) ?? k)
+        .toList(growable: false);
 
     return Song(
       metadata: Metadata(
         titles: metadata.titles,
-        sortTitle: metadata.sortTitle,
+        sortTitles: metadata.sortTitles,
         subtitles: metadata.subtitles,
         artists: metadata.artists,
-        sortArtist: metadata.sortArtist,
+        sortArtists: metadata.sortArtists,
         composers: metadata.composers,
         lyricists: metadata.lyricists,
         arrangers: metadata.arrangers,
         copyright: metadata.copyright,
         album: metadata.album,
         year: metadata.year,
-        key: newKey,
-        time: metadata.time,
-        tempo: metadata.tempo,
+        keys: List.unmodifiable(newKeys),
+        times: metadata.times,
+        tempos: metadata.tempos,
         duration: metadata.duration,
         capo: metadata.capo,
         transpose: 0,

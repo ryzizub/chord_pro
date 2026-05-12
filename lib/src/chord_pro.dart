@@ -17,16 +17,43 @@ class ChordPro {
   /// is in this set; directives with a negative selector
   /// (`{title-!print}` or legacy `{title+print}`) only contribute when it
   /// is not.
+  ///
+  /// [altBrackets] mirrors the `parser.altbrackets` configuration: when
+  /// set to a two-character pair (e.g. `«»`), those characters are
+  /// rewritten to `[` / `]` before parsing.
   static ParseResult parse(
     String source, {
     Set<String> selectors = const {},
-  }) =>
-      assemble(source, selectors: selectors);
+    String? altBrackets,
+  }) {
+    final input = _applyAltBrackets(source, altBrackets);
+    return assemble(input, selectors: selectors);
+  }
 
   /// Convenience wrapper that returns the first song of [source].
   static Song parseSong(
     String source, {
     Set<String> selectors = const {},
+    String? altBrackets,
   }) =>
-      parse(source, selectors: selectors).songs.first;
+      parse(
+        source,
+        selectors: selectors,
+        altBrackets: altBrackets,
+      ).songs.first;
+}
+
+String _applyAltBrackets(String source, String? pair) {
+  if (pair == null) return source;
+  final runes = pair.runes.toList(growable: false);
+  if (runes.length != 2) {
+    throw ArgumentError.value(
+      pair,
+      'altBrackets',
+      'must be exactly two characters',
+    );
+  }
+  final open = String.fromCharCode(runes[0]);
+  final close = String.fromCharCode(runes[1]);
+  return source.replaceAll(open, '[').replaceAll(close, ']');
 }
