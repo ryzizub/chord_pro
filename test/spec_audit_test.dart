@@ -27,8 +27,10 @@ void main() {
         '[§1.1] file is a sequence of lines (lyrics / directive / comment / blank)',
         () {
       final lines = scan('lyric line\n{title: T}\n# file comment\n\nlast');
-      expect(lines.map((l) => l.text).toList(),
-          ['lyric line', '{title: T}', '# file comment', '', 'last']);
+      expect(
+        lines.map((l) => l.text).toList(),
+        ['lyric line', '{title: T}', '# file comment', '', 'last'],
+      );
     });
 
     test('[§1.2] accepts UTF-8 input', () {
@@ -51,7 +53,7 @@ void main() {
     test(r'[§1.5a] `\uXXXX` 4-digit Unicode escape resolved by scanner', () {
       // The double-escaped backslash produces a literal `è`
       // sequence in the source; the scanner must resolve it to U+00E8.
-      final lines = scan('fl\\u00E8che');
+      final lines = scan(r'fl\u00E8che');
       expect(lines.single.text, 'flèche');
     });
 
@@ -64,7 +66,7 @@ void main() {
     test(
         r'[§1.5c] surrogate-pair `\uDXXX\uDXXX` recombines into astral codepoint',
         () {
-      final lines = scan(r'rocket 🚀!');
+      final lines = scan('rocket 🚀!');
       expect(lines.single.text, 'rocket 🚀!');
     });
 
@@ -130,7 +132,7 @@ void main() {
         'VII',
         'i',
         'iv',
-        'v'
+        'v',
       ]) {
         final c = Chord.tryParse(r);
         expect(c, isNotNull, reason: 'expected $r to parse');
@@ -215,8 +217,8 @@ void main() {
     });
 
     test(
-        '[§2.6] altered intervals `b5`, `#9`, `#11`, `b13` survive in extensions',
-        () {
+        '[§2.6] altered intervals `b5`, `#9`, `#11`, `b13` '
+        'survive in extensions', () {
       // Use a numeric extension before the alteration so the parser
       // can't mistake the flat/sharp for a root accidental
       // (`Cb5` would otherwise be Cb chord + 5).
@@ -241,24 +243,29 @@ void main() {
       expect((t as AnnotationToken).text, 'Coda');
     });
 
-    test(r'[§2.9a] whitespace-only `[ ]` parses as annotation (ChordPro 6.020)',
+    test('[§2.9a] whitespace-only `[ ]` parses as annotation (ChordPro 6.020)',
         () {
       final song = ChordPro.parseSong('[   ]');
       final tok = song.sections.first.lines.first.tokens.first;
-      expect(tok, isA<AnnotationToken>(),
-          reason:
-              'spec: pseudo-chord whitespace-only brackets become annotations');
+      expect(
+        tok,
+        isA<AnnotationToken>(),
+        reason:
+            'spec: pseudo-chord whitespace-only brackets become annotations',
+      );
     });
 
-    test(r'[§2.9b] pipe-only `[|]` parses as annotation (ChordPro 6.020)', () {
+    test('[§2.9b] pipe-only `[|]` parses as annotation (ChordPro 6.020)', () {
       final song = ChordPro.parseSong('[|]');
       final tok = song.sections.first.lines.first.tokens.first;
-      expect(tok, isA<AnnotationToken>(),
-          reason: 'spec: pipe-only brackets parse as annotations');
+      expect(
+        tok,
+        isA<AnnotationToken>(),
+        reason: 'spec: pipe-only brackets parse as annotations',
+      );
     });
 
-    test(r'[§2.9c] empty `[]` is an emergency placeholder (ChordPro 6.080)',
-        () {
+    test('[§2.9c] empty `[]` is an emergency placeholder (ChordPro 6.080)', () {
       final song = ChordPro.parseSong('a[]b');
       // The parser must not drop the bracket: it should yield three
       // tokens (text, placeholder, text) in some form.
@@ -267,8 +274,8 @@ void main() {
     });
 
     test(
-        '[§2.11] strict mode surfaces unknown extensions while staying parseable',
-        () {
+        '[§2.11] strict mode surfaces unknown extensions '
+        'while staying parseable', () {
       // `tryParse` is intentionally forgiving; unrecognised tail tokens
       // land in `extensions` rather than failing the whole chord.
       final c = Chord.tryParse('Cwidget');
@@ -337,8 +344,10 @@ void main() {
     });
 
     test('[§4-sorttitle] `{sorttitle}` populates sortTitle (since 6.0)', () {
-      expect(ChordPro.parseSong('{sorttitle: Aardvark}').metadata.sortTitle,
-          'Aardvark');
+      expect(
+        ChordPro.parseSong('{sorttitle: Aardvark}').metadata.sortTitle,
+        'Aardvark',
+      );
     });
 
     test('[§4-subtitle] `{subtitle}` and `{st}` populate subtitles', () {
@@ -354,8 +363,9 @@ void main() {
     test('[§4-sortartist] `{sortartist}` populates sortArtist (since 6.080)',
         () {
       expect(
-          ChordPro.parseSong('{sortartist: Beatles, The}').metadata.sortArtist,
-          'Beatles, The');
+        ChordPro.parseSong('{sortartist: Beatles, The}').metadata.sortArtist,
+        'Beatles, The',
+      );
     });
 
     test('[§4-composer] `{composer}` is multi-valued', () {
@@ -374,13 +384,17 @@ void main() {
     });
 
     test('[§4-copyright] `{copyright}` populates copyright', () {
-      expect(ChordPro.parseSong('{copyright: © 1999}').metadata.copyright,
-          '© 1999');
+      expect(
+        ChordPro.parseSong('{copyright: © 1999}').metadata.copyright,
+        '© 1999',
+      );
     });
 
     test('[§4-album] `{album}` populates album', () {
-      expect(ChordPro.parseSong('{album: Greatest Hits}').metadata.album,
-          'Greatest Hits');
+      expect(
+        ChordPro.parseSong('{album: Greatest Hits}').metadata.album,
+        'Greatest Hits',
+      );
     });
 
     test('[§4-year] `{year}` parses to int', () {
@@ -427,37 +441,37 @@ void main() {
   // §5 Comments
   // ---------------------------------------------------------------------
   group('§5 Comments', () {
-    Line _firstCommentLine(Song s) => s.sections
+    Line firstCommentLine(Song s) => s.sections
         .expand((sec) => sec.lines)
         .firstWhere((l) => l.kind == LineKind.comment);
 
     test('[§5.1a] `{comment: …}` produces a CommentStyle.plain line', () {
       final s = ChordPro.parseSong('{comment: Softly}');
-      expect(_firstCommentLine(s).commentStyle, CommentStyle.plain);
+      expect(firstCommentLine(s).commentStyle, CommentStyle.plain);
     });
 
     test('[§5.1b] `{c: …}` short form is plain comment', () {
       final s = ChordPro.parseSong('{c: x}');
-      expect(_firstCommentLine(s).commentStyle, CommentStyle.plain);
+      expect(firstCommentLine(s).commentStyle, CommentStyle.plain);
     });
 
     test('[§5.2] `{comment_italic}` / `{ci}` produces italic comment', () {
       final a = ChordPro.parseSong('{comment_italic: x}');
       final b = ChordPro.parseSong('{ci: x}');
-      expect(_firstCommentLine(a).commentStyle, CommentStyle.italic);
-      expect(_firstCommentLine(b).commentStyle, CommentStyle.italic);
+      expect(firstCommentLine(a).commentStyle, CommentStyle.italic);
+      expect(firstCommentLine(b).commentStyle, CommentStyle.italic);
     });
 
     test('[§5.3] `{comment_box}` / `{cb}` produces box comment', () {
       final a = ChordPro.parseSong('{comment_box: x}');
       final b = ChordPro.parseSong('{cb: x}');
-      expect(_firstCommentLine(a).commentStyle, CommentStyle.box);
-      expect(_firstCommentLine(b).commentStyle, CommentStyle.box);
+      expect(firstCommentLine(a).commentStyle, CommentStyle.box);
+      expect(firstCommentLine(b).commentStyle, CommentStyle.box);
     });
 
     test('[§5.4] `{highlight: …}` produces highlight comment', () {
       final s = ChordPro.parseSong('{highlight: ALERT}');
-      expect(_firstCommentLine(s).commentStyle, CommentStyle.highlight);
+      expect(firstCommentLine(s).commentStyle, CommentStyle.highlight);
     });
   });
 
@@ -507,11 +521,14 @@ x
     });
 
     test('[§6.1e] section end must NOT carry a selector — start does', () {
-      final s = ChordPro.parseSong('''
+      final s = ChordPro.parseSong(
+        '''
 {start_of_verse-soprano}
 soft
 {end_of_verse}
-''', selectors: {'soprano'});
+''',
+        selectors: {'soprano'},
+      );
       final v = s.sections.firstWhere((sec) => sec.kind == SectionKind.verse);
       expect(v.lines.where((l) => l.kind == LineKind.structured), isNotEmpty);
     });
@@ -602,7 +619,8 @@ real chorus
 
     test('[§6.5-ly] `start_of_ly` body captured as verbatim section', () {
       final s = ChordPro.parseSong(
-          '{start_of_ly}\n\\relative { c d e }\n{end_of_ly}');
+        '{start_of_ly}\n\\relative { c d e }\n{end_of_ly}',
+      );
       expect(s.sections.any((sec) => sec.kind == SectionKind.ly), isTrue);
     });
 
@@ -677,8 +695,10 @@ x
       final uku = ChordPro.parseSong(src, selectors: {'ukulele'});
       expect(guitar.chordDefinitions, hasLength(1));
       expect(uku.chordDefinitions, hasLength(1));
-      expect(guitar.chordDefinitions.first.frets,
-          isNot(equals(uku.chordDefinitions.first.frets)));
+      expect(
+        guitar.chordDefinitions.first.frets,
+        isNot(equals(uku.chordDefinitions.first.frets)),
+      );
     });
 
     test('[§7.e] selectors gate `{comment}` lines', () {
@@ -686,17 +706,24 @@ x
           ChordPro.parseSong('{comment-alto: Soft}', selectors: {'alto'});
       final off = ChordPro.parseSong('{comment-alto: Soft}');
       expect(
-          on.sections.expand((s) => s.lines).any((l) => l.isComment), isTrue);
+        on.sections.expand((s) => s.lines).any((l) => l.isComment),
+        isTrue,
+      );
       expect(
-          off.sections.expand((s) => s.lines).any((l) => l.isComment), isFalse);
+        off.sections.expand((s) => s.lines).any((l) => l.isComment),
+        isFalse,
+      );
     });
 
     test('[§7.f] section start may be selected; end must be bare', () {
-      final s = ChordPro.parseSong('''
+      final s = ChordPro.parseSong(
+        '''
 {start_of_verse-soprano}
 soft
 {end_of_verse}
-''', selectors: {'soprano'});
+''',
+        selectors: {'soprano'},
+      );
       final v = s.sections.firstWhere((sec) => sec.kind == SectionKind.verse);
       expect(v.lines.where((l) => l.kind == LineKind.structured), isNotEmpty);
     });
@@ -708,7 +735,8 @@ soft
   group('§8 Chord definitions', () {
     test('[§8.1a] `{define}` parses name + base-fret + frets + fingers', () {
       final s = ChordPro.parseSong(
-          '{define: Am base-fret 1 frets 0 2 2 1 0 0 fingers - 2 3 1 - -}');
+        '{define: Am base-fret 1 frets 0 2 2 1 0 0 fingers - 2 3 1 - -}',
+      );
       final d = s.chordDefinitions.single;
       expect(d.name, 'Am');
       expect(d.baseFret, 1);
@@ -759,8 +787,8 @@ soft
     });
 
     test(
-        '[§8.1i] bracketed `[Name]` makes definition transposable (since 6.100)',
-        () {
+        '[§8.1i] bracketed `[Name]` makes definition transposable '
+        '(since 6.100)', () {
       final s =
           ChordPro.parseSong('{define: [Am] base-fret 1 frets 0 2 2 1 0 0}');
       final d = s.chordDefinitions.single;
@@ -792,13 +820,16 @@ soft
 
     test('[§8.3c] `s` qualifier sets sharps preference', () {
       expect(
-          ChordPro.parseSong('{transpose: -10s}').metadata.transposeQualifier,
-          TransposeQualifier.sharps);
+        ChordPro.parseSong('{transpose: -10s}').metadata.transposeQualifier,
+        TransposeQualifier.sharps,
+      );
     });
 
     test('[§8.3d] `f` qualifier sets flats preference', () {
-      expect(ChordPro.parseSong('{transpose: 2f}').metadata.transposeQualifier,
-          TransposeQualifier.flats);
+      expect(
+        ChordPro.parseSong('{transpose: 2f}').metadata.transposeQualifier,
+        TransposeQualifier.flats,
+      );
     });
 
     test('[§8.3e] `Song.transposed(N)` shifts every chord N semitones', () {
@@ -827,23 +858,26 @@ soft
 
     test('[§9.b] `{chordsize}` / `{cs}` accept number', () {
       expect(
-          ChordPro.parseSong('{chordsize: 12}')
-              .formatting
-              .forTarget('chord')
-              .size,
-          '12');
+        ChordPro.parseSong('{chordsize: 12}')
+            .formatting
+            .forTarget('chord')
+            .size,
+        '12',
+      );
       expect(
-          ChordPro.parseSong('{cs: 10.5}').formatting.forTarget('chord').size,
-          '10.5');
+        ChordPro.parseSong('{cs: 10.5}').formatting.forTarget('chord').size,
+        '10.5',
+      );
     });
 
     test('[§9.c] `{chordsize: 120%}` percentage accepted', () {
       expect(
-          ChordPro.parseSong('{chordsize: 120%}')
-              .formatting
-              .forTarget('chord')
-              .size,
-          '120%');
+        ChordPro.parseSong('{chordsize: 120%}')
+            .formatting
+            .forTarget('chord')
+            .size,
+        '120%',
+      );
     });
 
     test('[§9.d] `{chordcolour}` and `{chordcolor}` are synonyms', () {
@@ -855,11 +889,12 @@ soft
 
     test('[§9.e] hex colour `#RRGGBB` accepted', () {
       expect(
-          ChordPro.parseSong('{titlecolour: #4419ff}')
-              .formatting
-              .forTarget('title')
-              .colour,
-          '#4419ff');
+        ChordPro.parseSong('{titlecolour: #4419ff}')
+            .formatting
+            .forTarget('title')
+            .colour,
+        '#4419ff',
+      );
     });
 
     test('[§9.f] `{textfont}` / `{tf}`, `{textsize}` / `{ts}`', () {
@@ -869,8 +904,8 @@ soft
     });
 
     test(
-        '[§9.g] chorus*, footer*, tab*, grid*, toc*, title*, label* all targetable',
-        () {
+        '[§9.g] chorus*, footer*, tab*, grid*, toc*, title*, label* '
+        'all targetable', () {
       final s = ChordPro.parseSong('''
 {chorusfont: a}
 {chorussize: 1}
@@ -889,7 +924,7 @@ soft
         'grid',
         'label',
         'toc',
-        'title'
+        'title',
       ]) {
         expect(s.formatting.forTarget(t).font, 'a', reason: 'target=$t');
       }
@@ -900,20 +935,21 @@ soft
   // §10 Image directive
   // ---------------------------------------------------------------------
   group('§10 Image directive', () {
-    ImageDirective _firstImage(Song s) => s.sections
+    ImageDirective firstImage(Song s) => s.sections
         .expand((sec) => sec.lines)
         .firstWhere((l) => l.kind == LineKind.image)
         .image!;
 
     test('[§10.a] `{image: src=…}` populates ImageDirective.src', () {
       final s = ChordPro.parseSong('{image: src="cover.png"}');
-      expect(_firstImage(s).src, 'cover.png');
+      expect(firstImage(s).src, 'cover.png');
     });
 
     test('[§10.b] width / height / scale captured as strings', () {
       final s = ChordPro.parseSong(
-          '{image: src="x.png" width="200" height="100" scale="50%"}');
-      final img = _firstImage(s);
+        '{image: src="x.png" width="200" height="100" scale="50%"}',
+      );
+      final img = firstImage(s);
       expect(img.width, '200');
       expect(img.height, '100');
       expect(img.scale, '50%');
@@ -921,21 +957,22 @@ soft
 
     test('[§10.c] align value captured', () {
       final s = ChordPro.parseSong('{image: src="x" align="left"}');
-      expect(_firstImage(s).align, 'left');
+      expect(firstImage(s).align, 'left');
     });
 
     test('[§10.d] border / bordertrbl', () {
       final s =
           ChordPro.parseSong('{image: src="x" border="1" bordertrbl="tb"}');
-      final img = _firstImage(s);
+      final img = firstImage(s);
       expect(img.border, '1');
       expect(img.bordertrbl, 'tb');
     });
 
     test('[§10.e] title / label / href / id', () {
       final s = ChordPro.parseSong(
-          '{image: src="x" title="T" label="L" href="https://e/x" id="im01"}');
-      final img = _firstImage(s);
+        '{image: src="x" title="T" label="L" href="https://e/x" id="im01"}',
+      );
+      final img = firstImage(s);
       expect(img.title, 'T');
       expect(img.label, 'L');
       expect(img.href, 'https://e/x');
@@ -944,20 +981,22 @@ soft
 
     test('[§10.f] x / y offset', () {
       final s = ChordPro.parseSong('{image: src="x" x="10" y="20"}');
-      final img = _firstImage(s);
+      final img = firstImage(s);
       expect(img.x, '10');
       expect(img.y, '20');
     });
 
     test('[§10.g] spread', () {
       final s = ChordPro.parseSong('{image: src="x" spread="6"}');
-      expect(_firstImage(s).spread, '6');
+      expect(firstImage(s).spread, '6');
     });
 
     test('[§10.h] center / chord / type / persist / omit', () {
       final s = ChordPro.parseSong(
-          '{image: src="x" center="1" chord="Am" type="svg" persist="1" omit="0"}');
-      final img = _firstImage(s);
+        '{image: src="x" center="1" chord="Am" type="svg" '
+        'persist="1" omit="0"}',
+      );
+      final img = firstImage(s);
       expect(img.center, '1');
       expect(img.chord, 'Am');
       expect(img.type, 'svg');
@@ -967,42 +1006,47 @@ soft
 
     test('[§10.i] anchorEnum=paper', () {
       final s = ChordPro.parseSong('{image: src="x" anchor="paper"}');
-      expect(_firstImage(s).anchorEnum, ImageAnchor.paper);
+      expect(firstImage(s).anchorEnum, ImageAnchor.paper);
     });
 
     test('[§10.j] anchorEnum=page', () {
       expect(
-          _firstImage(ChordPro.parseSong('{image: src="x" anchor="page"}'))
-              .anchorEnum,
-          ImageAnchor.page);
+        firstImage(ChordPro.parseSong('{image: src="x" anchor="page"}'))
+            .anchorEnum,
+        ImageAnchor.page,
+      );
     });
 
     test('[§10.k] anchorEnum=allpages (since 6.080)', () {
       expect(
-          _firstImage(ChordPro.parseSong('{image: src="x" anchor="allpages"}'))
-              .anchorEnum,
-          ImageAnchor.allpages);
+        firstImage(ChordPro.parseSong('{image: src="x" anchor="allpages"}'))
+            .anchorEnum,
+        ImageAnchor.allpages,
+      );
     });
 
     test('[§10.l] anchorEnum=column', () {
       expect(
-          _firstImage(ChordPro.parseSong('{image: src="x" anchor="column"}'))
-              .anchorEnum,
-          ImageAnchor.column);
+        firstImage(ChordPro.parseSong('{image: src="x" anchor="column"}'))
+            .anchorEnum,
+        ImageAnchor.column,
+      );
     });
 
     test('[§10.m] anchorEnum=float', () {
       expect(
-          _firstImage(ChordPro.parseSong('{image: src="x" anchor="float"}'))
-              .anchorEnum,
-          ImageAnchor.float);
+        firstImage(ChordPro.parseSong('{image: src="x" anchor="float"}'))
+            .anchorEnum,
+        ImageAnchor.float,
+      );
     });
 
     test('[§10.n] anchorEnum=line', () {
       expect(
-          _firstImage(ChordPro.parseSong('{image: src="x" anchor="line"}'))
-              .anchorEnum,
-          ImageAnchor.line);
+        firstImage(ChordPro.parseSong('{image: src="x" anchor="line"}'))
+            .anchorEnum,
+        ImageAnchor.line,
+      );
     });
   });
 
@@ -1010,29 +1054,41 @@ soft
   // §11 Output / layout / page directives
   // ---------------------------------------------------------------------
   group('§11 Output / layout', () {
-    Line _firstBreak(Song s) => s.sections
+    Line firstBreak(Song s) => s.sections
         .expand((sec) => sec.lines)
         .firstWhere((l) => l.kind == LineKind.layoutBreak);
 
     test('[§11.a] `{new_page}` / `{np}` produce LayoutBreak.newPage', () {
-      expect(_firstBreak(ChordPro.parseSong('{new_page}')).layoutBreak,
-          LayoutBreak.newPage);
-      expect(_firstBreak(ChordPro.parseSong('{np}')).layoutBreak,
-          LayoutBreak.newPage);
+      expect(
+        firstBreak(ChordPro.parseSong('{new_page}')).layoutBreak,
+        LayoutBreak.newPage,
+      );
+      expect(
+        firstBreak(ChordPro.parseSong('{np}')).layoutBreak,
+        LayoutBreak.newPage,
+      );
     });
 
     test('[§11.b] `{new_physical_page}` / `{npp}` → newPhysicalPage', () {
-      expect(_firstBreak(ChordPro.parseSong('{new_physical_page}')).layoutBreak,
-          LayoutBreak.newPhysicalPage);
-      expect(_firstBreak(ChordPro.parseSong('{npp}')).layoutBreak,
-          LayoutBreak.newPhysicalPage);
+      expect(
+        firstBreak(ChordPro.parseSong('{new_physical_page}')).layoutBreak,
+        LayoutBreak.newPhysicalPage,
+      );
+      expect(
+        firstBreak(ChordPro.parseSong('{npp}')).layoutBreak,
+        LayoutBreak.newPhysicalPage,
+      );
     });
 
     test('[§11.c] `{column_break}` / `{colb}` → columnBreak', () {
-      expect(_firstBreak(ChordPro.parseSong('{column_break}')).layoutBreak,
-          LayoutBreak.columnBreak);
-      expect(_firstBreak(ChordPro.parseSong('{colb}')).layoutBreak,
-          LayoutBreak.columnBreak);
+      expect(
+        firstBreak(ChordPro.parseSong('{column_break}')).layoutBreak,
+        LayoutBreak.columnBreak,
+      );
+      expect(
+        firstBreak(ChordPro.parseSong('{colb}')).layoutBreak,
+        LayoutBreak.columnBreak,
+      );
     });
 
     test('[§11.d] `{columns: N}` populates Metadata.columns', () {
@@ -1045,24 +1101,38 @@ soft
 
     test('[§11.f] `{titles: left|center|right}` becomes typed TitlesAlignment',
         () {
-      expect(ChordPro.parseSong('{titles: left}').titlesAlignment,
-          TitlesAlignment.left);
-      expect(ChordPro.parseSong('{titles: center}').titlesAlignment,
-          TitlesAlignment.center);
-      expect(ChordPro.parseSong('{titles: right}').titlesAlignment,
-          TitlesAlignment.right);
+      expect(
+        ChordPro.parseSong('{titles: left}').titlesAlignment,
+        TitlesAlignment.left,
+      );
+      expect(
+        ChordPro.parseSong('{titles: center}').titlesAlignment,
+        TitlesAlignment.center,
+      );
+      expect(
+        ChordPro.parseSong('{titles: right}').titlesAlignment,
+        TitlesAlignment.right,
+      );
     });
 
     test('[§11.g] `{diagrams: on|off|top|bottom|right|below}` typed', () {
       expect(ChordPro.parseSong('{diagrams: off}').diagrams?.enabled, isFalse);
-      expect(ChordPro.parseSong('{diagrams: top}').diagrams?.position,
-          DiagramsPosition.top);
-      expect(ChordPro.parseSong('{diagrams: bottom}').diagrams?.position,
-          DiagramsPosition.bottom);
-      expect(ChordPro.parseSong('{diagrams: right}').diagrams?.position,
-          DiagramsPosition.right);
-      expect(ChordPro.parseSong('{diagrams: below}').diagrams?.position,
-          DiagramsPosition.below);
+      expect(
+        ChordPro.parseSong('{diagrams: top}').diagrams?.position,
+        DiagramsPosition.top,
+      );
+      expect(
+        ChordPro.parseSong('{diagrams: bottom}').diagrams?.position,
+        DiagramsPosition.bottom,
+      );
+      expect(
+        ChordPro.parseSong('{diagrams: right}').diagrams?.position,
+        DiagramsPosition.right,
+      );
+      expect(
+        ChordPro.parseSong('{diagrams: below}').diagrams?.position,
+        DiagramsPosition.below,
+      );
     });
 
     test('[§11.h] `{g}` alias for `{diagrams}`', () {
@@ -1130,21 +1200,25 @@ soft
   group('§14 Chord-over-lyric legacy', () {
     // Spec: ChordPro detects chord-over-lyric input and converts internally.
     // README does not claim support; flag as audit gap.
-    test('[§14.a] AUDIT: chord-over-lyric input auto-detected and converted',
-        () {
-      const cop = '''
+    test(
+      '[§14.a] AUDIT: chord-over-lyric input auto-detected and converted',
+      () {
+        const cop = '''
 D          G    D
 Swing low, sweet chariot,
 ''';
-      final s = ChordPro.parseSong(cop);
-      final tokens =
-          s.sections.expand((sec) => sec.lines).expand((l) => l.tokens);
-      expect(tokens.whereType<ChordToken>(), isNotEmpty,
-          reason:
-              'spec: legacy chord-over-lyric format must be auto-converted');
-    },
-        skip:
-            'AUDIT: chord-over-lyric auto-conversion not implemented (see README scope)');
+        final s = ChordPro.parseSong(cop);
+        final tokens =
+            s.sections.expand((sec) => sec.lines).expand((l) => l.tokens);
+        expect(
+          tokens.whereType<ChordToken>(),
+          isNotEmpty,
+          reason: 'spec: legacy chord-over-lyric format must be auto-converted',
+        );
+      },
+      skip: 'AUDIT: chord-over-lyric auto-conversion not implemented '
+          '(see README scope)',
+    );
   });
 
   // ---------------------------------------------------------------------
@@ -1152,8 +1226,8 @@ Swing low, sweet chariot,
   // ---------------------------------------------------------------------
   group('§16 Spec ambiguities', () {
     test(
-        '[§16.a] `{key: Am}` accepted (mode marker in value) per common practice',
-        () {
+        '[§16.a] `{key: Am}` accepted (mode marker in value) '
+        'per common practice', () {
       // The directives-key spec page only shows `C`, but the chord
       // grammar admits `m`/`min`. Many sources use `Am`/`Em` as keys.
       expect(ChordPro.parseSong('{key: Am}').metadata.key, 'Am');
@@ -1175,19 +1249,32 @@ Swing low, sweet chariot,
       expect(r.songs.last.tocSuppressed, isTrue);
     });
 
-    test('[§1.8b] AUDIT: `toc=off` falsy keyword should also suppress', () {
-      final r = ChordPro.parse('{ns toc=off}\n{title: B}');
-      expect(r.songs.last.tocSuppressed, isTrue,
-          reason: 'spec: `off` is a falsy keyword in key_value_pairs');
-    },
-        skip:
-            'AUDIT: `off`/`no`/`none` keyword set incomplete; parser only honours `no|false|0`');
+    test(
+      '[§1.8b] AUDIT: `toc=off` falsy keyword should also suppress',
+      () {
+        final r = ChordPro.parse('{ns toc=off}\n{title: B}');
+        expect(
+          r.songs.last.tocSuppressed,
+          isTrue,
+          reason: 'spec: `off` is a falsy keyword in key_value_pairs',
+        );
+      },
+      skip:
+          'AUDIT: `off`/`no`/`none` keyword set incomplete; parser only honours `no|false|0`',
+    );
 
-    test('[§1.8c] AUDIT: `toc=none` falsy keyword should also suppress', () {
-      final r = ChordPro.parse('{ns toc=none}\n{title: B}');
-      expect(r.songs.last.tocSuppressed, isTrue,
-          reason: 'spec: `none` is a falsy keyword in key_value_pairs');
-    }, skip: 'AUDIT: `none` keyword not recognised');
+    test(
+      '[§1.8c] AUDIT: `toc=none` falsy keyword should also suppress',
+      () {
+        final r = ChordPro.parse('{ns toc=none}\n{title: B}');
+        expect(
+          r.songs.last.tocSuppressed,
+          isTrue,
+          reason: 'spec: `none` is a falsy keyword in key_value_pairs',
+        );
+      },
+      skip: 'AUDIT: `none` keyword not recognised',
+    );
 
     test('[§1.8d] numeric attribute with unit suffix preserved verbatim', () {
       // The parser does not interpret units; it stores the raw string.
@@ -1202,15 +1289,16 @@ Swing low, sweet chariot,
       }
     });
 
-    test('[§1.9] AUDIT: parser.altbrackets config (alternate chord brackets)',
-        () {
-      // Spec: parser.altbrackets in config replaces e.g. `«»` with `[`/`]`.
-      // No equivalent API on ChordPro.parse; flag as audit gap.
-      // Placeholder assertion so the test surfaces.
-      expect(true, isTrue);
-    },
-        skip:
-            'AUDIT: `parser.altbrackets` configuration option not implemented');
+    test(
+      '[§1.9] AUDIT: parser.altbrackets config (alternate chord brackets)',
+      () {
+        // Spec: parser.altbrackets in config replaces e.g. `«»` with `[`/`]`.
+        // No equivalent API on ChordPro.parse; flag as audit gap.
+        // Placeholder assertion so the test surfaces.
+        expect(true, isTrue);
+      },
+      skip: 'AUDIT: `parser.altbrackets` configuration option not implemented',
+    );
   });
 
   // ---------------------------------------------------------------------
@@ -1224,12 +1312,14 @@ Swing low, sweet chariot,
     });
 
     test(
-        '[§2.11+] AUDIT: notes mode (lowercase note names) needs config opt-in',
-        () {
-      // Spec: `settings.notes` enables solfège or lowercase letters as
-      // chord roots. No surface in this parser.
-      expect(true, isTrue);
-    }, skip: 'AUDIT: notes-mode configuration not implemented');
+      '[§2.11+] AUDIT: notes mode (lowercase note names) needs config opt-in',
+      () {
+        // Spec: `settings.notes` enables solfège or lowercase letters as
+        // chord roots. No surface in this parser.
+        expect(true, isTrue);
+      },
+      skip: 'AUDIT: notes-mode configuration not implemented',
+    );
   });
 
   // ---------------------------------------------------------------------
@@ -1265,45 +1355,63 @@ Swing low, sweet chariot,
       expect(s.metadata.other.containsKey('page.side'), isFalse);
     });
 
-    test('[§4-reserved.g] AUDIT: `instrument` should be reserved namespace',
-        () {
-      final s = ChordPro.parseSong('{meta: instrument guitar}');
-      expect(s.metadata.other.containsKey('instrument'), isFalse,
-          reason: 'spec: `instrument` is auto-populated; user assigns dropped');
-    },
-        skip: 'AUDIT: `instrument`/`tuning`/`user`/`page`/`pages`/`songindex`/'
-            '`pagerange`/`chords`/`numchords` not in reserved set');
+    test(
+      '[§4-reserved.g] AUDIT: `instrument` should be reserved namespace',
+      () {
+        final s = ChordPro.parseSong('{meta: instrument guitar}');
+        expect(
+          s.metadata.other.containsKey('instrument'),
+          isFalse,
+          reason: 'spec: `instrument` is auto-populated; user assigns dropped',
+        );
+      },
+      skip: 'AUDIT: `instrument`/`tuning`/`user`/`page`/`pages`/`songindex`/ '
+          '`pagerange`/`chords`/`numchords` not in reserved set',
+    );
 
-    test('[§4-reserved.h] AUDIT: `tuning` should be reserved namespace', () {
-      final s = ChordPro.parseSong('{meta: tuning DGBE}');
-      expect(s.metadata.other.containsKey('tuning'), isFalse);
-    }, skip: 'AUDIT: `tuning` not in reserved set');
+    test(
+      '[§4-reserved.h] AUDIT: `tuning` should be reserved namespace',
+      () {
+        final s = ChordPro.parseSong('{meta: tuning DGBE}');
+        expect(s.metadata.other.containsKey('tuning'), isFalse);
+      },
+      skip: 'AUDIT: `tuning` not in reserved set',
+    );
 
-    test('[§4-key.multi] AUDIT: `{key}` is multi-valued per spec', () {
-      // Spec (directives-key/): "Multiple key specifications are
-      // possible, each specification is assumed to apply from where
-      // it was specified." Current `Metadata.key` is scalar — last
-      // value wins, source position is lost.
-      final s = ChordPro.parseSong('{key: C}\n[C]hi\n{key: G}\n[G]bye');
-      expect(s.metadata.key, 'C',
+    test(
+      '[§4-key.multi] AUDIT: `{key}` is multi-valued per spec',
+      () {
+        // Spec (directives-key/): "Multiple key specifications are
+        // possible, each specification is assumed to apply from where
+        // it was specified." Current `Metadata.key` is scalar — last
+        // value wins, source position is lost.
+        final s = ChordPro.parseSong('{key: C}\n[C]hi\n{key: G}\n[G]bye');
+        expect(
+          s.metadata.key,
+          'C',
           reason:
-              'audit: should expose key changes positionally, not last-only');
-    },
-        skip:
-            'AUDIT: `Metadata.key` is scalar — multi-valued positional rule not modelled');
+              'audit: should expose key changes positionally, not last-only',
+        );
+      },
+      skip: 'AUDIT: `Metadata.key` is scalar — multi-valued positional '
+          'rule not modelled',
+    );
 
-    test('[§4-sortartist.match] AUDIT: sortartist must match artist count', () {
-      // Spec (directives-sortartist/): one sortartist per artist, in
-      // matching order. Library stores `sortArtist` as a single
-      // scalar, so it cannot encode the per-artist match.
-      final s = ChordPro.parseSong('{artist: A}\n{artist: B}\n'
-          '{sortartist: SA}\n{sortartist: SB}');
-      expect(s.metadata.artists, hasLength(2));
-      // Should expose both sortartists in order — currently scalar.
-      expect(s.metadata.sortArtist, isNotNull);
-    },
-        skip:
-            'AUDIT: `Metadata.sortArtist` is scalar — multi-value match rule not modelled');
+    test(
+      '[§4-sortartist.match] AUDIT: sortartist must match artist count',
+      () {
+        // Spec (directives-sortartist/): one sortartist per artist, in
+        // matching order. Library stores `sortArtist` as a single
+        // scalar, so it cannot encode the per-artist match.
+        final s = ChordPro.parseSong('{artist: A}\n{artist: B}\n'
+            '{sortartist: SA}\n{sortartist: SB}');
+        expect(s.metadata.artists, hasLength(2));
+        // Should expose both sortartists in order — currently scalar.
+        expect(s.metadata.sortArtist, isNotNull);
+      },
+      skip: 'AUDIT: `Metadata.sortArtist` is scalar — multi-value match '
+          'rule not modelled',
+    );
   });
 
   // ---------------------------------------------------------------------
@@ -1312,16 +1420,19 @@ Swing low, sweet chariot,
   group('§6 additions', () {
     test('[§6.5-ly.body] lilypond `scale=` body-prefix line preserved verbatim',
         () {
-      final s = ChordPro.parseSong('''
+      final s = ChordPro.parseSong(r'''
 {start_of_ly}
 scale=2
-\\relative { c d e }
+\relative { c d e }
 {end_of_ly}
 ''');
       final ly = s.sections.firstWhere((sec) => sec.kind == SectionKind.ly);
       // Body-prefix formatting lines are part of the verbatim body.
-      final hasScale = ly.lines.any((l) =>
-          l.kind == LineKind.verbatim && (l.verbatim ?? '').contains('scale='));
+      final hasScale = ly.lines.any(
+        (l) =>
+            l.kind == LineKind.verbatim &&
+            (l.verbatim ?? '').contains('scale='),
+      );
       expect(hasScale, isTrue);
     });
 
@@ -1343,16 +1454,23 @@ hi
   // §8 additions — define / chord / transpose
   // ---------------------------------------------------------------------
   group('§8 additions', () {
-    test('[§8.1-base_fret-alias] AUDIT: `base_fret` (underscore) accepted', () {
-      // Spec (directives-define/) uses both `base-fret` and `base_fret`
-      // interchangeably. Current parser keyword set only includes
-      // `base-fret`.
-      final s = ChordPro.parseSong('{define: A base_fret 3 frets 0 2 2 1 0 0}');
-      expect(s.chordDefinitions.single.baseFret, 3,
-          reason: 'spec: both spellings should yield the same baseFret');
-    },
-        skip:
-            'AUDIT: `base_fret` underscore alias not in keyword set (only `base-fret`)');
+    test(
+      '[§8.1-base_fret-alias] AUDIT: `base_fret` (underscore) accepted',
+      () {
+        // Spec (directives-define/) uses both `base-fret` and `base_fret`
+        // interchangeably. Current parser keyword set only includes
+        // `base-fret`.
+        final s =
+            ChordPro.parseSong('{define: A base_fret 3 frets 0 2 2 1 0 0}');
+        expect(
+          s.chordDefinitions.single.baseFret,
+          3,
+          reason: 'spec: both spellings should yield the same baseFret',
+        );
+      },
+      skip: 'AUDIT: `base_fret` underscore alias not in keyword set '
+          '(only `base-fret`)',
+    );
 
     test('[§8.1-format-store] format string captured verbatim', () {
       // Substitutions are not expanded by the parser; the rendering
@@ -1424,15 +1542,21 @@ hi
         .firstWhere((l) => l.kind == LineKind.image)
         .image!;
 
-    test('[§10-trbl.alias] AUDIT: `trbl=` accepted as alias for `bordertrbl=`',
-        () {
-      // The directives-image/ page uses `trbl=`; the cheat sheet uses
-      // `bordertrbl=`. A spec-conforming parser should accept both.
-      final s = ChordPro.parseSong('{image: src="x" trbl="tb"}');
-      expect(firstImage(s).bordertrbl, 'tb',
+    test(
+      '[§10-trbl.alias] AUDIT: `trbl=` accepted as alias for `bordertrbl=`',
+      () {
+        // The directives-image/ page uses `trbl=`; the cheat sheet uses
+        // `bordertrbl=`. A spec-conforming parser should accept both.
+        final s = ChordPro.parseSong('{image: src="x" trbl="tb"}');
+        expect(
+          firstImage(s).bordertrbl,
+          'tb',
           reason: 'spec: `trbl=` is the directives-image/ name for the '
-              'border-edge attribute');
-    }, skip: 'AUDIT: `trbl=` alias not mapped to `bordertrbl`');
+              'border-edge attribute',
+        );
+      },
+      skip: 'AUDIT: `trbl=` alias not mapped to `bordertrbl`',
+    );
 
     test('[§10-chord-inline] `chord=` belongs to inline `<img/>`, not block',
         () {
@@ -1500,15 +1624,18 @@ hi
   // ---------------------------------------------------------------------
   group('Final-pass additions', () {
     // ---- §1.10 parser.preprocess (configuration-level) ----------------
-    test('[§1.10] AUDIT: `parser.preprocess` configurable line rewrites', () {
-      // Spec: object with sub-keys `all`, `directive`, `songline`,
-      // `env-<name>`. Each rewrite item carries `target`/`pattern`,
-      // `replace`, `flags`, optional `select`. ChordPro.parse exposes
-      // no hook to register these.
-      expect(true, isTrue);
-    },
-        skip: 'AUDIT: `parser.preprocess` configuration not surfaced — no '
-            'API to register rewrite items');
+    test(
+      '[§1.10] AUDIT: `parser.preprocess` configurable line rewrites',
+      () {
+        // Spec: object with sub-keys `all`, `directive`, `songline`,
+        // `env-<name>`. Each rewrite item carries `target`/`pattern`,
+        // `replace`, `flags`, optional `select`. ChordPro.parse exposes
+        // no hook to register these.
+        expect(true, isTrue);
+      },
+      skip: 'AUDIT: `parser.preprocess` configuration not surfaced — no '
+          'API to register rewrite items',
+    );
 
     // ---- §4 _key precision (capo-adjusted, not transpose-adjusted) ----
     test('[§4-_key.capo] `_key` is auto and capo-adjusted (per spec)', () {
@@ -1527,16 +1654,19 @@ hi
     });
 
     // ---- §4 sorttitle multi-value invariant ---------------------------
-    test('[§4-sorttitle.match] AUDIT: sorttitle must match title count', () {
-      // Spec (directives-sorttitle/): one sorttitle per title, in
-      // matching order. Library exposes scalar `sortTitle`.
-      final s = ChordPro.parseSong('{title: A}\n{title: B}\n'
-          '{sorttitle: SA}\n{sorttitle: SB}');
-      expect(s.metadata.titles, hasLength(2));
-      expect(s.metadata.sortTitle, isNotNull);
-    },
-        skip: 'AUDIT: `Metadata.sortTitle` is scalar — multi-value match '
-            'rule not modelled');
+    test(
+      '[§4-sorttitle.match] AUDIT: sorttitle must match title count',
+      () {
+        // Spec (directives-sorttitle/): one sorttitle per title, in
+        // matching order. Library exposes scalar `sortTitle`.
+        final s = ChordPro.parseSong('{title: A}\n{title: B}\n'
+            '{sorttitle: SA}\n{sorttitle: SB}');
+        expect(s.metadata.titles, hasLength(2));
+        expect(s.metadata.sortTitle, isNotNull);
+      },
+      skip: 'AUDIT: `Metadata.sortTitle` is scalar — multi-value match '
+          'rule not modelled',
+    );
 
     // ---- §4 format-string conditional syntax (preserved verbatim) -----
     test(
@@ -1550,60 +1680,72 @@ hi
     });
 
     test(
-        '[§4-fmt-cond.note] AUDIT: `%{name|t|f}` cannot round-trip through a '
-        'directive value (parser closes on first `}`)', () {
-      // The directive parser closes on the first unescaped `}`, so
-      // `{define: A format "%{x|t|f}"}` truncates. Conditional
-      // format syntax can only be used in config-level format
-      // strings. Flag as audit gap.
-      expect(true, isTrue);
-    },
-        skip: 'AUDIT: brace-form `%{…}` substitutions inside directive '
-            'values truncated by `}` — config-only feature');
+      '[§4-fmt-cond.note] AUDIT: `%{name|t|f}` cannot round-trip through a '
+      'directive value (parser closes on first `}`)',
+      () {
+        // The directive parser closes on the first unescaped `}`, so
+        // `{define: A format "%{x|t|f}"}` truncates. Conditional
+        // format syntax can only be used in config-level format
+        // strings. Flag as audit gap.
+        expect(true, isTrue);
+      },
+      skip: 'AUDIT: brace-form `%{…}` substitutions inside directive '
+          'values truncated by `}` — config-only feature',
+    );
 
     // ---- §6.3 settings.choruslabels -----------------------------------
     test(
-        '[§6.3-choruslabels] AUDIT: `settings.choruslabels=false` flips '
-        'label semantics on `{chorus}` recall', () {
-      // Spec: when false, the label argument replaces the standard
-      // "Chorus" header text. No surface in this parser.
-      expect(true, isTrue);
-    },
-        skip: 'AUDIT: `settings.choruslabels` configuration option not '
-            'surfaced');
+      '[§6.3-choruslabels] AUDIT: `settings.choruslabels=false` flips '
+      'label semantics on `{chorus}` recall',
+      () {
+        // Spec: when false, the label argument replaces the standard
+        // "Chorus" header text. No surface in this parser.
+        expect(true, isTrue);
+      },
+      skip: 'AUDIT: `settings.choruslabels` configuration option not '
+          'surfaced',
+    );
 
     // ---- §6.4 chord-changes (cc) and `[^]` recall ---------------------
-    test('[§6.4-cc.named] AUDIT: `cc="Name"` declares a named chord-change set',
-        () {
-      // Experimental, since 6.070. Parser stores `cc` as a String on
-      // GridAttributes; spec semantics (named set lookup) not
-      // implemented.
-      final s = ChordPro.parseSong('{sog cc="Verse"}\n. .\n{eog}');
-      final g = s.sections.firstWhere((sec) => sec.kind == SectionKind.grid);
-      expect(g.gridAttributes?.cc, 'Verse');
-    },
-        skip: 'AUDIT: `cc="Name"` named-set semantics not implemented '
-            '(value preserved as String)');
-
-    test('[§6.4-cc.progression] AUDIT: `cc="Name:C1 C2 …"` combined form', () {
-      // Parser stores raw value; spec splits "Name:..." form into
-      // a name and a chord progression list.
-      final s = ChordPro.parseSong('{sog cc="Verse:C G Am F"}\n. .\n{eog}');
-      final g = s.sections.firstWhere((sec) => sec.kind == SectionKind.grid);
-      expect(g.gridAttributes?.cc, contains('C G Am F'));
-    }, skip: 'AUDIT: `cc="Name:progression"` form not parsed structurally');
+    test(
+      '[§6.4-cc.named] AUDIT: `cc="Name"` declares a named chord-change set',
+      () {
+        // Experimental, since 6.070. Parser stores `cc` as a String on
+        // GridAttributes; spec semantics (named set lookup) not
+        // implemented.
+        final s = ChordPro.parseSong('{sog cc="Verse"}\n. .\n{eog}');
+        final g = s.sections.firstWhere((sec) => sec.kind == SectionKind.grid);
+        expect(g.gridAttributes?.cc, 'Verse');
+      },
+      skip: 'AUDIT: `cc="Name"` named-set semantics not implemented '
+          '(value preserved as String)',
+    );
 
     test(
-        '[§6.4-recall] AUDIT: `[^]` token recalls next chord from active cc set',
-        () {
-      // ChordPro 6.070 experimental. `[^]` should resolve to the
-      // next chord in the active cc set; here it parses as a
-      // generic chord token because the chord grammar accepts the
-      // literal raw value.
-      final s = ChordPro.parseSong('{sog cc="X:C G"}\n[^] [^]\n{eog}');
-      final g = s.sections.firstWhere((sec) => sec.kind == SectionKind.grid);
-      expect(g.lines, isNotEmpty);
-    }, skip: 'AUDIT: `[^]` chord-changes recall token not implemented');
+      '[§6.4-cc.progression] AUDIT: `cc="Name:C1 C2 …"` combined form',
+      () {
+        // Parser stores raw value; spec splits "Name:..." form into
+        // a name and a chord progression list.
+        final s = ChordPro.parseSong('{sog cc="Verse:C G Am F"}\n. .\n{eog}');
+        final g = s.sections.firstWhere((sec) => sec.kind == SectionKind.grid);
+        expect(g.gridAttributes?.cc, contains('C G Am F'));
+      },
+      skip: 'AUDIT: `cc="Name:progression"` form not parsed structurally',
+    );
+
+    test(
+      '[§6.4-recall] AUDIT: `[^]` token recalls next chord from active cc set',
+      () {
+        // ChordPro 6.070 experimental. `[^]` should resolve to the
+        // next chord in the active cc set; here it parses as a
+        // generic chord token because the chord grammar accepts the
+        // literal raw value.
+        final s = ChordPro.parseSong('{sog cc="X:C G"}\n[^] [^]\n{eog}');
+        final g = s.sections.firstWhere((sec) => sec.kind == SectionKind.grid);
+        expect(g.lines, isNotEmpty);
+      },
+      skip: 'AUDIT: `[^]` chord-changes recall token not implemented',
+    );
 
     // ---- §6.5 ABC transpose cascade (corrected) -----------------------
     test(
@@ -1683,10 +1825,16 @@ GABc
       // library does not yet auto-populate `key.print` / `key.sound`
       // — those are renderer concerns.
       final s = ChordPro.parseSong('{meta: key_actual X}\n{meta: key_from Y}');
-      expect(s.metadata.other.containsKey('key_actual'), isFalse,
-          reason: 'still reserved (back-compat)');
-      expect(s.metadata.other.containsKey('key_from'), isFalse,
-          reason: 'still reserved (back-compat)');
+      expect(
+        s.metadata.other.containsKey('key_actual'),
+        isFalse,
+        reason: 'still reserved (back-compat)',
+      );
+      expect(
+        s.metadata.other.containsKey('key_from'),
+        isFalse,
+        reason: 'still reserved (back-compat)',
+      );
     });
 
     test('[§4-key.print.since] `key.print` is reserved (since 6.100)', () {
@@ -1700,24 +1848,28 @@ GABc
     });
 
     test(
-        '[§1.11-settings.wraplines] AUDIT: `settings.wraplines` config '
-        '(default true, since 6.100)', () {
-      // Configuration-level toggle; ChordPro.parse takes no config
-      // surface, so the option is not exposed.
-      expect(true, isTrue);
-    },
-        skip: 'AUDIT: `settings.wraplines` configuration not surfaced — no '
-            'API to toggle line wrapping');
+      '[§1.11-settings.wraplines] AUDIT: `settings.wraplines` config '
+      '(default true, since 6.100)',
+      () {
+        // Configuration-level toggle; ChordPro.parse takes no config
+        // surface, so the option is not exposed.
+        expect(true, isTrue);
+      },
+      skip: 'AUDIT: `settings.wraplines` configuration not surfaced — no '
+          'API to toggle line wrapping',
+    );
 
     test(
-        '[§1.11-settings.strict] AUDIT: `settings.strict` default flipped to '
-        'false in 6.100', () {
-      // Strict mode rejection is a config decision; the parser is
-      // forgiving by default (matching the new 6.100 default).
-      expect(true, isTrue);
-    },
-        skip: 'AUDIT: `settings.strict` not toggleable — parser is always '
-            'forgiving (consistent with 6.100 default)');
+      '[§1.11-settings.strict] AUDIT: `settings.strict` default flipped to '
+      'false in 6.100',
+      () {
+        // Strict mode rejection is a config decision; the parser is
+        // forgiving by default (matching the new 6.100 default).
+        expect(true, isTrue);
+      },
+      skip: 'AUDIT: `settings.strict` not toggleable — parser is always '
+          'forgiving (consistent with 6.100 default)',
+    );
 
     test('[§1.11-keys.flats] AUDIT: `keys.flats` config (since 6.100)', () {
       // The lib exposes AccidentalPreference enum on
@@ -1730,12 +1882,15 @@ GABc
     });
 
     test(
-        '[§1.11-keys.force-common] AUDIT: `keys.force-common` config '
-        '(since 6.100)', () {
-      // Enforces ≤5 accidentals in transposed keys. No surface on
-      // ChordPro.parse / Song.transposed.
-      expect(true, isTrue);
-    }, skip: 'AUDIT: `keys.force-common` enforcement not implemented');
+      '[§1.11-keys.force-common] AUDIT: `keys.force-common` config '
+      '(since 6.100)',
+      () {
+        // Enforces ≤5 accidentals in transposed keys. No surface on
+        // ChordPro.parse / Song.transposed.
+        expect(true, isTrue);
+      },
+      skip: 'AUDIT: `keys.force-common` enforcement not implemented',
+    );
 
     test('[§15-6.101] 6.101 is housekeeping only — no file-format additions',
         () {
