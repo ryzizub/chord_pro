@@ -1,3 +1,43 @@
+## 0.6.0
+
+Final ChordPro 6 spec-parity pass: fills the parser-implementable gaps
+left by 0.5.0's audit. Surface changes are mostly additive; a handful of
+multi-valued metadata fields move from scalar to list to match the spec.
+
+### Breaking
+
+* `Metadata.sortTitle` / `Metadata.sortArtist` → `Metadata.sortTitles` /
+  `Metadata.sortArtists` (lists). One sort entry per `title` / `artist`
+  in matching source order per `directives-sorttitle/` and
+  `directives-sortartist/`. The old scalar names remain as convenience
+  getters returning the first entry.
+* `Metadata.key` / `Metadata.time` / `Metadata.tempo` →
+  `Metadata.keys` / `Metadata.times` / `Metadata.tempos` (lists). Each
+  declaration applies from its position onward per `directives-key/`,
+  `directives-time/`, `directives-tempo/`. The scalar names remain as
+  convenience getters for the first (primary) declaration.
+
+### New
+
+* `ChordPro.parse` / `parseSong` accept an `altBrackets` argument that
+  rewrites a configured two-character pair (e.g. `«»`) to `[` / `]`
+  before parsing. Mirrors the `parser.altbrackets` configuration option.
+* `GridAttributes.ccName` and `.ccProgression` decode the ChordPro 6.070
+  `cc="Name"` / `cc="Name:C1 C2 …"` forms into a typed name plus chord
+  list. The raw `cc` string is still surfaced verbatim.
+* `ImageDirective` accepts `trbl=` as a synonym for `bordertrbl=`
+  (both names appear in the official docs).
+* `{define}` / `{chord}` accept `base_fret` (underscore) as a synonym
+  for `base-fret` per `directives-define/`.
+* Falsy keyword set for `toc=`, `omit=`, … now covers the full
+  `key_value_pairs/` list: `0`, `false`, `null`, `no`, `none`, `off`,
+  plus the empty string.
+* Reserved metadata namespace extended to cover the full
+  `chordpro-configuration-format-strings/` list: `page`, `pageno`,
+  `pages`, `pagerange`, `instrument`, `instrument.type`,
+  `instrument.description`, `tuning`, `user`, `user.name`,
+  `user.fullname`.
+
 ## 0.5.0
 
 ChordPro 6 spec parity pass against the upstream reference parser

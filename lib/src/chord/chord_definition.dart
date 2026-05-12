@@ -87,6 +87,7 @@ final RegExp _fingerMutedRe = RegExp(r'^[-xXN]$');
 
 const Set<String> _keywords = {
   'base-fret',
+  'base_fret',
   'frets',
   'fingers',
   'keys',
@@ -139,6 +140,7 @@ ChordDefinition? parseChordDefinition(
     final tok = tokens[i].toLowerCase();
     switch (tok) {
       case 'base-fret':
+      case 'base_fret':
         if (i + 1 < tokens.length) {
           baseFret = int.tryParse(tokens[i + 1]);
           i += 2;

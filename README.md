@@ -25,14 +25,14 @@ final result = ChordPro.parse(source);
 final song = result.songs.first;
 
 print(song.metadata.titles.firstOrNull);
-print(song.metadata.key);
+print(song.metadata.key); // first key (use `metadata.keys` for the full list)
 ```
 
 `ChordPro.parse` returns a `ParseResult` with every song in the document (split on `{new_song}` / `{ns}`) plus any diagnostics. Use `ChordPro.parseSong` if you only want the first song.
 
 ### What a `Song` contains
 
-- **`metadata`** — typed `Metadata`: titles, sort titles, subtitles, artists, sort artist, composers, lyricists, arrangers, copyright, album, year, key, time, tempo, duration, capo, transpose (plus `transposeQualifier`), columns, tags, plus an `other` map for anything custom.
+- **`metadata`** — typed `Metadata`: titles, sortTitles, subtitles, artists, sortArtists, composers, lyricists, arrangers, copyright, album, year, keys, times, tempos, duration, capo, transpose (plus `transposeQualifier`), columns, tags, plus an `other` map for anything custom. The multi-valued fields preserve source order; convenience getters `key` / `time` / `tempo` / `sortTitle` / `sortArtist` return the first entry.
 - **`sections`** — ordered `Section`s for verse, chorus, bridge, tab, grid, abc, ly, svg, textblock, custom environments, and loose lines. Each section exposes `label`, `attributes`, plus typed `gridAttributes` and `textblockAttributes` where applicable.
 - **`chordDefinitions`** — parsed `{define}` / `{chord}` bodies including `display`, `format`, `keys`, `copy`, `copyall`, `diagram`, and the transposable bracketed `[Name]` form.
 - **`formatting`** — typed font / size / colour overrides for chord, text, title, chorus, label, and friends.
@@ -101,9 +101,9 @@ All facts per the [ChordPro chord reference][cp_chords] and [directive reference
 
 ### Directives
 
-- **Metadata** — `title` / `t`, `sorttitle`, `subtitle` / `st`, `artist`, `sortartist`, `composer`, `lyricist`, `arranger`, `copyright`, `album`, `year`, `key`, `time`, `tempo`, `duration`, `capo`, `transpose` (with optional `s`/`f`/`k`/`#`/`b`/`♯`/`♭` qualifier), `columns` / `col`, `tag`, plus `{meta: key value}` desugaring. Auto-generated names (`_key`, `key.print`, `today`, …) are reserved.
+- **Metadata** — `title` / `t`, `sorttitle`, `subtitle` / `st`, `artist`, `sortartist`, `composer`, `lyricist`, `arranger`, `copyright`, `album`, `year`, `key`, `time`, `tempo`, `duration`, `capo`, `transpose` (with optional `s`/`f`/`k`/`#`/`b`/`♯`/`♭` qualifier), `columns` / `col`, `tag`, plus `{meta: key value}` desugaring. `key`, `time`, `tempo`, `sorttitle`, and `sortartist` are multi-valued per spec (one `sorttitle` per `title`; each `{key}` applies from its source position). Auto-generated names (`_key`, `key.print`, `today`, `instrument`, `user`, `page`, …) are reserved.
 - **Comments** — `{comment}`, `{ci}`, `{cb}`, `{highlight}` emit as in-flow comment lines.
-- **Images** — `{image: …}` parsed into a typed `ImageDirective` with full attribute coverage: `src`, `width`, `height`, `scale`, `align`, `border`, `bordertrbl`, `title`, `label`, `href`, `id`, `chord`, `type`, `x`, `y`, `spread`, `center`, `persist`, `omit`, plus a validated `anchorEnum` (`paper` / `page` / `allpages` / `column` / `float` / `line`).
+- **Images** — `{image: …}` parsed into a typed `ImageDirective` with full attribute coverage: `src`, `width`, `height`, `scale`, `align`, `border`, `bordertrbl` (`trbl=` accepted as alias), `title`, `label`, `href`, `id`, `chord`, `type`, `x`, `y`, `spread`, `center`, `persist`, `omit`, plus a validated `anchorEnum` (`paper` / `page` / `allpages` / `column` / `float` / `line`).
 - **Layout breaks** — `{new_page}`, `{new_physical_page}`, `{column_break}` emit as in-flow layout breaks.
 - **Output / song boundary** — `{ns toc=no}` (or `toc=false` / `toc=0`) sets `Song.tocSuppressed`. `{titles: left|center|right}` and `{diagrams: on|off|top|bottom|right|below}` (with `{g}` alias) become typed song-level settings.
 - **Formatting** — `chordfont`, `textsize`, `titlecolour`, … reduce into `FormattingSettings`. Both `colour` and `color` accepted.
@@ -115,7 +115,7 @@ All facts per the [ChordPro chord reference][cp_chords] and [directive reference
 - Delegated `abc`, `ly`, `svg`, `textblock` captured verbatim.
 - Custom `start_of_<name>` / `end_of_<name>` sections preserved with their custom kind.
 - `label="…"` attribute parsed for every `{start_of_*}` (alongside the legacy bare-value form).
-- `{start_of_grid}` exposes typed `shape` (left+measures × beats+right), `cc`, and `label` via `Section.gridAttributes`.
+- `{start_of_grid}` exposes typed `shape` (left+measures × beats+right), `cc` (plus decoded `ccName` / `ccProgression` for the 6.070 `cc="Name:C1 C2 …"` form), and `label` via `Section.gridAttributes`.
 - `{start_of_textblock}` exposes the full ChordPro 6.050 attribute set (textblock-specific plus image-inherited) via `Section.textblockAttributes`.
 - `{chorus}` recall accepts all four spec forms — `{chorus}`, `{chorus: Final}`, `{chorus: label="Final"}`, `{chorus label="Final"}`.
 
@@ -129,6 +129,7 @@ All facts per the [ChordPro chord reference][cp_chords] and [directive reference
 - ChordPro 6.01 scanner: trailing `\` line continuation and `\uXXXX` Unicode escapes anywhere in input text.
 - ChordPro 6.060 brace-form `\u{X+}` Unicode escape (1+ hex digits, supports surrogate-pair recombination).
 - File-level `#` comments dropped.
+- `parser.altbrackets` configuration (`ChordPro.parse(..., altBrackets: '«»')`) rewrites the configured pair to `[` / `]` before parsing.
 - Diagnostics with 1-based source spans for every problem.
 
 ## Non-spec extensions
@@ -151,6 +152,10 @@ The parser is more lenient than the published spec in a few places. Each extensi
 - `{define format="…"}` is captured as a typed `String` but the `%{…}` substitutions inside it are not interpreted (rendering concern).
 - The directive parser closes on the first unescaped `}`, so attribute values cannot themselves contain a literal `}`.
 - `{pagetype}` lands in `Song.directives` only — no typed access.
+- The chord-changes recall token `[^]` (ChordPro 6.070, experimental) is captured as a plain chord token; the cc-set advance is a rendering concern.
+- Chord-over-lyrics legacy auto-conversion (`chords-over-lyrics/`) is not implemented; supply ChordPro-format input.
+- Notes mode (lowercase / solfège chord roots, `settings.notes`) is not exposed.
+- Configuration-only switches (`parser.preprocess`, `settings.wraplines`, `settings.choruslabels`, `settings.maj7delta`, `keys.force-common`) have no surface — the parser uses the ChordPro 6.100 defaults.
 
 ## Example songs
 

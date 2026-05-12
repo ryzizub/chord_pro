@@ -606,12 +606,21 @@ int _firstWhitespace(String s) {
   return -1;
 }
 
-/// Returns `true` for `no`/`false`/`0` (case-insensitive). `null` and
-/// any other value returns `false`. Mirrors the semantics of the
-/// reference parser's `is_true()`/`!is_true()` for boolean attribute
-/// values like `{ns toc=no}`.
+/// Returns `true` when [value] is in the ChordPro falsy keyword set
+/// (`0`, `false`, `null`, `no`, `none`, `off`, or the empty string,
+/// case-insensitive). Returns `false` for an absent attribute (Dart
+/// `null`).
+///
+/// Mirrors `key_value_pairs/` from the spec: any non-empty value not in
+/// the falsy set is truthy.
 bool _isFalsy(String? value) {
   if (value == null) return false;
   final v = value.trim().toLowerCase();
-  return v == 'no' || v == 'false' || v == '0' || v == 'off';
+  return v.isEmpty ||
+      v == '0' ||
+      v == 'false' ||
+      v == 'null' ||
+      v == 'no' ||
+      v == 'none' ||
+      v == 'off';
 }
