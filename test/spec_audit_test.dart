@@ -1138,6 +1138,12 @@ soft
     test('[§11.h] `{g}` alias for `{diagrams}`', () {
       expect(ChordPro.parseSong('{g: off}').diagrams?.enabled, isFalse);
     });
+
+    test('[§11.i] `{no_grid}` / `{ng}` disable diagrams (legacy, since 3.6)',
+        () {
+      expect(ChordPro.parseSong('{no_grid}').diagrams?.enabled, isFalse);
+      expect(ChordPro.parseSong('{ng}').diagrams?.enabled, isFalse);
+    });
   });
 
   // ---------------------------------------------------------------------

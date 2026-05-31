@@ -149,6 +149,13 @@ ParseResult assemble(
         continue;
       }
 
+      // Legacy `{no_grid}` / `{ng}` — obsolete since 6.020 but still
+      // accepted; equivalent to `{diagrams: off}` (Song.pm:1339).
+      if (directive.name == 'no_grid' || directive.name == 'ng') {
+        diagrams = const DiagramsSetting(enabled: false);
+        continue;
+      }
+
       // Selector gate. Per spec, "all directives can be conditionally
       // selected … selection applies to everything in the section, up to
       // and including the final section end directive."
