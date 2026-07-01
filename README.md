@@ -33,7 +33,7 @@ print(song.metadata.key); // first key (use `metadata.keys` for the full list)
 ### What a `Song` contains
 
 - **`metadata`** — typed `Metadata`: titles, sortTitles, subtitles, artists, sortArtists, composers, lyricists, arrangers, copyright, album, year, keys, times, tempos, duration, capo, transpose (plus `transposeQualifier`), columns, tags, plus an `other` map for anything custom. The multi-valued fields preserve source order; convenience getters `key` / `time` / `tempo` / `sortTitle` / `sortArtist` return the first entry.
-- **`sections`** — ordered `Section`s for verse, chorus, bridge, tab, grid, abc, ly, svg, textblock, custom environments, and loose lines. Each section exposes `label`, `attributes`, plus typed `gridAttributes` and `textblockAttributes` where applicable.
+- **`sections`** — ordered `Section`s for verse, chorus, bridge, tab, grid, abc, ly, svg, textblock, grille, custom environments, and loose lines. Each section exposes `label`, `attributes`, plus typed `gridAttributes` and `textblockAttributes` where applicable.
 - **`chordDefinitions`** — parsed `{define}` / `{chord}` bodies including `display`, `format`, `keys`, `copy`, `copyall`, `diagram`, and the transposable bracketed `[Name]` form.
 - **`formatting`** — typed font / size / colour overrides for chord, text, title, chorus, label, and friends.
 - **`directives`** — the raw directive stream in source order.

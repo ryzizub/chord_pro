@@ -1,3 +1,16 @@
+## Unreleased
+
+### New
+
+* `SectionKind.grille` — recognises `{start_of_grille}` / `{end_of_grille}` as
+  the experimental `Grille.pm` delegated environment from the reference
+  implementation. Previously these fell through to `SectionKind.custom`
+  (non-verbatim); they are now captured verbatim, consistent with other
+  delegated environments (`abc`, `ly`, `svg`, `textblock`).
+  Spec: <https://www.chordpro.org/chordpro/directives-env_grille/>
+
+---
+
 ## 0.6.0
 
 Final ChordPro 6 spec-parity pass: fills the parser-implementable gaps
