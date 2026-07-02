@@ -647,8 +647,7 @@ real chorus
       final s = ChordPro.parseSong(
         '{start_of_grille}\n| C . | G . |\n{end_of_grille}',
       );
-      final g =
-          s.sections.firstWhere((sec) => sec.kind == SectionKind.grille);
+      final g = s.sections.firstWhere((sec) => sec.kind == SectionKind.grille);
       expect(g.lines.every((l) => l.kind == LineKind.verbatim), isTrue);
     });
 
