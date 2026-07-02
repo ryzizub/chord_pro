@@ -629,6 +629,28 @@ real chorus
       expect(s.sections.any((sec) => sec.kind == SectionKind.svg), isTrue);
     });
 
+    test(
+        '[§6.5-grille] `start_of_grille` recognised as SectionKind.grille '
+        '(experimental delegated environment, Song.pm dispatch table)', () {
+      final s = ChordPro.parseSong(
+        '{start_of_grille}\n| C . | G . |\n{end_of_grille}',
+      );
+      expect(
+        s.sections.any((sec) => sec.kind == SectionKind.grille),
+        isTrue,
+        reason: 'grille must not fall through to custom',
+      );
+    });
+
+    test('[§6.5-grille.verbatim] grille body captured verbatim like abc/ly/svg',
+        () {
+      final s = ChordPro.parseSong(
+        '{start_of_grille}\n| C . | G . |\n{end_of_grille}',
+      );
+      final g = s.sections.firstWhere((sec) => sec.kind == SectionKind.grille);
+      expect(g.lines.every((l) => l.kind == LineKind.verbatim), isTrue);
+    });
+
     test('[§6.6a] textblock attributes (textblock-specific) typed', () {
       final s = ChordPro.parseSong('''
 {start_of_textblock width="200" flush="center" textsize="14"}

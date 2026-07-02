@@ -35,6 +35,14 @@ enum SectionKind {
   /// `{start_of_textblock}` … `{end_of_textblock}` (verbatim).
   textblock,
 
+  /// `{start_of_grille}` … `{end_of_grille}` (verbatim).
+  ///
+  /// Experimental delegated environment in the reference implementation
+  /// (`Grille.pm`). Produces a chord-grid image via the delegate; the body
+  /// is raw chord-grid notation and must be captured verbatim.
+  /// Spec: https://www.chordpro.org/chordpro/directives-env_grille/
+  grille,
+
   /// Custom `{start_of_X}` environment not recognised above.
   custom,
 }

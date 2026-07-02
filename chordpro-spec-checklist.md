@@ -387,6 +387,7 @@ Common rules:
 | [x] `start_of_ly`/`end_of_ly` | Body must start with a line beginning `%` or `\`. Lines before that are **body-prefix formatting instruction lines** — `scale=n` and `center` are body lines, not directive attributes. `\version` and `\header { tagline = ##f }` auto-prepended. | Directive attribute: `label` only. `{transpose}` does NOT cascade. |
 | [x] `start_of_svg`/`end_of_svg` | Body is valid SVG/XML. | Same image-style attrs. |
 | [x] `start_of_textblock`/`end_of_textblock` | Body is text formatted into a placeable image. | Since 6.050. See §6.6. |
+| [x] `start_of_grille`/`end_of_grille` | Experimental delegated environment (`Grille.pm`). Body is chord-grid notation; captured verbatim and processed by the delegate to produce a chord-grid image. | Experimental — present in the `%directives` dispatch table in the reference `Song.pm`. Spec: [directives-env_grille](https://www.chordpro.org/chordpro/directives-env_grille/). Maps to `SectionKind.grille`. |
 
 ### 6.6 Textblock attributes (since 6.050)
 
