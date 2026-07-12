@@ -1,4 +1,7 @@
-## Unreleased
+## 0.6.1
+
+Maintenance release: adds the `grille` delegated environment and corrects
+the legacy `{no_grid}` / `{ng}` directives. No breaking changes.
 
 ### New
 
@@ -8,6 +11,14 @@
   (non-verbatim); they are now captured verbatim, consistent with other
   delegated environments (`abc`, `ly`, `svg`, `textblock`).
   Spec: <https://www.chordpro.org/chordpro/directives-env_grille/>
+
+### Fixed
+
+* Legacy `{no_grid}` / `{ng}` now disable chord diagrams (equivalent to
+  `{diagrams: off}`), matching their `{diagrams}` / `{g}` counterparts.
+  Previously they fell through to the generic directive path, leaving
+  `Song.diagrams` unset. Both forms remain in the lossless
+  `Song.directives` stream.
 
 ---
 
