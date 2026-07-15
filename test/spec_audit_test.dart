@@ -1816,15 +1816,36 @@ GABc
     );
 
     test(
-      '[§1.11-settings.strict] AUDIT: `settings.strict` default flipped to '
-      'false in 6.100',
+      '[§1.11-settings.strict] strict=true warns on missing {key}; '
+      'default (false) is forgiving',
       () {
-        // Strict mode rejection is a config decision; the parser is
-        // forgiving by default (matching the new 6.100 default).
-        expect(true, isTrue);
+        // Default (strict=false): no key-missing diagnostic.
+        final lenient = ChordPro.parse('[C]hello');
+        expect(
+          lenient.diagnostics.any(
+            (d) => d.message.contains('{key}'),
+          ),
+          isFalse,
+        );
+
+        // strict=true: a warning is emitted for the missing {key}.
+        final strict = ChordPro.parse('[C]hello', strict: true);
+        expect(
+          strict.diagnostics.any(
+            (d) =>
+                d.severity == DiagnosticSeverity.warning &&
+                d.message.contains('{key}'),
+          ),
+          isTrue,
+        );
+
+        // A song that already has {key} must NOT trigger the warning.
+        final withKey = ChordPro.parse('{key: C}\n[C]hello', strict: true);
+        expect(
+          withKey.diagnostics.any((d) => d.message.contains('{key}')),
+          isFalse,
+        );
       },
-      skip: 'AUDIT: `settings.strict` not toggleable — parser is always '
-          'forgiving (consistent with 6.100 default)',
     );
 
     test('[§1.11-keys.flats] AUDIT: `keys.flats` config (since 6.100)', () {

@@ -20,6 +20,12 @@
   ChordPro configuration option. Defaults to `false`; no behaviour change for
   existing call sites. Transposition of notes-mode roots is supported through
   the same chromatic table as uppercase roots.
+* `strict` parameter on `ChordPro.parse` and `ChordPro.parseSong` (and the
+  internal `assemble`) — when `true`, a `DiagnosticSeverity.warning` is
+  emitted for each song that lacks a `{key}` directive, mirroring the
+  `settings.strict` ChordPro configuration option. Defaults to `false`,
+  consistent with the ChordPro 6.100 change that made forgiving the built-in
+  default.
 
 ---
 

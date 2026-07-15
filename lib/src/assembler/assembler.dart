@@ -26,10 +26,16 @@ import 'package:chord_pro/src/source/source_span.dart';
 ///
 /// [notesMode] mirrors the `settings.notes` configuration option: when
 /// `true`, lowercase `a`–`g` are accepted as letter-system chord roots.
+///
+/// [strict] mirrors the `settings.strict` ChordPro configuration option.
+/// When `true`, a [DiagnosticSeverity.warning] is emitted for each song that
+/// lacks a `{key}` directive. Defaults to `false`, matching the ChordPro
+/// 6.100 change that flipped the built-in default from strict to forgiving.
 ParseResult assemble(
   String source, {
   Set<String> selectors = const {},
   bool notesMode = false,
+  bool strict = false,
 }) {
   final activeSelectors = selectors.isEmpty
       ? const <String>{}
@@ -76,6 +82,15 @@ ParseResult assemble(
       final s = open!.finish();
       if (s != null) sections.add(s);
       open = null;
+    }
+    if (strict && !directives.any((d) => d.name == 'key')) {
+      diagnostics.add(
+        const Diagnostic(
+          severity: DiagnosticSeverity.warning,
+          message: 'No {key} directive found (required by settings.strict).',
+          span: SourceSpan(line: 1, column: 1, length: 0),
+        ),
+      );
     }
     songs.add(
       Song(
