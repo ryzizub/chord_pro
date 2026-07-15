@@ -26,6 +26,12 @@
   `settings.strict` ChordPro configuration option. Defaults to `false`,
   consistent with the ChordPro 6.100 change that made forgiving the built-in
   default.
+* `forceCommonKeys` parameter on `Song.transposed`, `Chord.transpose`, and
+  `transposeRoot` — when `true`, roots that would produce key signatures with
+  more than 5 accidentals are substituted with their enharmonic equivalents:
+  `C#`→`Db`, `D#`→`Eb`, `G#`→`Ab`, `A#`→`Bb`. Mirrors the `keys.force-common`
+  ChordPro 6.100 configuration option. Defaults to `false`; no behaviour change
+  for existing call sites.
 
 ---
 

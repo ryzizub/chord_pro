@@ -1859,14 +1859,32 @@ GABc
     });
 
     test(
-      '[§1.11-keys.force-common] AUDIT: `keys.force-common` config '
-      '(since 6.100)',
+      '[§1.11-keys.force-common] forceCommonKeys substitutes '
+      'exotic sharp roots with enharmonic flats',
       () {
-        // Enforces ≤5 accidentals in transposed keys. No surface on
-        // ChordPro.parse / Song.transposed.
-        expect(true, isTrue);
+        // Transposing C up 1 semitone (sharps) → C# without forceCommonKeys.
+        final song = ChordPro.parseSong('{key: C}\n[C]hi');
+        final without = song.transposed(1);
+        final tokenWithout =
+            without.sections.first.lines.first.tokens.first as ChordToken;
+        expect(tokenWithout.chord?.root, 'C#');
+        expect(without.metadata.key, 'C#');
+
+        // With forceCommonKeys: C# (7♯) → Db (5♭).
+        final forced = song.transposed(1, forceCommonKeys: true);
+        final tokenForced =
+            forced.sections.first.lines.first.tokens.first as ChordToken;
+        expect(tokenForced.chord?.root, 'Db');
+        expect(forced.metadata.key, 'Db');
+
+        // D# → Eb, G# → Ab, A# → Bb with forceCommonKeys.
+        final sharps = {'D#': 'Eb', 'G#': 'Ab', 'A#': 'Bb', 'C#': 'Db'};
+        for (final entry in sharps.entries) {
+          final c = Chord.tryParse(entry.key)!;
+          final t = c.transpose(0, forceCommonKeys: true);
+          expect(t.root, entry.value, reason: '${entry.key} with forceCommonKeys');
+        }
       },
-      skip: 'AUDIT: `keys.force-common` enforcement not implemented',
     );
 
     test('[§15-6.101] 6.101 is housekeeping only — no file-format additions',
