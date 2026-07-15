@@ -521,7 +521,10 @@ class _OpenSection {
       _lines.add(Line.verbatim(verbatim: line.text, span: line.span));
     } else {
       _lines.add(
-        Line(tokens: tokenizeInline(line, notesMode: notesMode), span: line.span),
+        Line(
+          tokens: tokenizeInline(line, notesMode: notesMode),
+          span: line.span,
+        ),
       );
     }
   }
