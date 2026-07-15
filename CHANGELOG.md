@@ -14,6 +14,12 @@
   (experimental). Renderers should advance the active chord-change set (`cc`)
   cursor when they encounter this token.
   Spec: <https://www.chordpro.org/chordpro/ChordChanges/>
+* `notesMode` parameter on `Chord.tryParse`, `tokenizeInline`, `assemble`,
+  `ChordPro.parse`, and `ChordPro.parseSong` — when `true`, lowercase `a`–`g`
+  are accepted as letter-system chord roots, mirroring the `settings.notes`
+  ChordPro configuration option. Defaults to `false`; no behaviour change for
+  existing call sites. Transposition of notes-mode roots is supported through
+  the same chromatic table as uppercase roots.
 
 ---
 

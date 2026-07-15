@@ -21,13 +21,17 @@ class ChordPro {
   /// [altBrackets] mirrors the `parser.altbrackets` configuration: when
   /// set to a two-character pair (e.g. `«»`), those characters are
   /// rewritten to `[` / `]` before parsing.
+  ///
+  /// [notesMode] mirrors the `settings.notes` configuration option: when
+  /// `true`, lowercase `a`–`g` are accepted as letter-system chord roots.
   static ParseResult parse(
     String source, {
     Set<String> selectors = const {},
     String? altBrackets,
+    bool notesMode = false,
   }) {
     final input = _applyAltBrackets(source, altBrackets);
-    return assemble(input, selectors: selectors);
+    return assemble(input, selectors: selectors, notesMode: notesMode);
   }
 
   /// Convenience wrapper that returns the first song of [source].
@@ -35,11 +39,13 @@ class ChordPro {
     String source, {
     Set<String> selectors = const {},
     String? altBrackets,
+    bool notesMode = false,
   }) =>
       parse(
         source,
         selectors: selectors,
         altBrackets: altBrackets,
+        notesMode: notesMode,
       ).songs.first;
 }
 

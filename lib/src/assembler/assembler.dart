@@ -23,9 +23,13 @@ import 'package:chord_pro/src/source/source_span.dart';
 /// active when reducing metadata and formatting directives. Matching is
 /// case-insensitive; selectors are folded to lower-case to match what the
 /// directive parser stores.
+///
+/// [notesMode] mirrors the `settings.notes` configuration option: when
+/// `true`, lowercase `a`–`g` are accepted as letter-system chord roots.
 ParseResult assemble(
   String source, {
   Set<String> selectors = const {},
+  bool notesMode = false,
 }) {
   final activeSelectors = selectors.isEmpty
       ? const <String>{}
@@ -243,6 +247,7 @@ ParseResult assemble(
           label: label,
           attributes: Map<String, String>.unmodifiable(attrs),
           startSpan: directive.span,
+          notesMode: notesMode,
         );
         continue;
       }
@@ -253,6 +258,7 @@ ParseResult assemble(
         open ??= _OpenSection(
           kind: SectionKind.loose,
           startSpan: directive.span,
+          notesMode: notesMode,
         );
         open!.addCommentLine(
           text: value,
@@ -267,6 +273,7 @@ ParseResult assemble(
         open ??= _OpenSection(
           kind: SectionKind.loose,
           startSpan: directive.span,
+          notesMode: notesMode,
         );
         open!.addLayoutBreak(kind: layoutBreak, span: directive.span);
         continue;
@@ -298,6 +305,7 @@ ParseResult assemble(
         open ??= _OpenSection(
           kind: SectionKind.loose,
           startSpan: directive.span,
+          notesMode: notesMode,
         );
         open!.addImageLine(image: image, span: directive.span);
         continue;
@@ -346,6 +354,7 @@ ParseResult assemble(
       open = _OpenSection(
         kind: SectionKind.loose,
         startSpan: line.span,
+        notesMode: notesMode,
       );
     }
     open!.addLine(line);
@@ -487,6 +496,7 @@ class _OpenSection {
     this.customKind,
     this.label,
     this.attributes = const {},
+    this.notesMode = false,
   });
 
   final SectionKind kind;
@@ -494,6 +504,7 @@ class _OpenSection {
   final String? label;
   final Map<String, String> attributes;
   final SourceSpan startSpan;
+  final bool notesMode;
   final List<Line> _lines = [];
 
   bool get isVerbatim =>
@@ -510,7 +521,7 @@ class _OpenSection {
       _lines.add(Line.verbatim(verbatim: line.text, span: line.span));
     } else {
       _lines.add(
-        Line(tokens: tokenizeInline(line), span: line.span),
+        Line(tokens: tokenizeInline(line, notesMode: notesMode), span: line.span),
       );
     }
   }
