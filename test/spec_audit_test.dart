@@ -1607,7 +1607,7 @@ hi
           (line) => line.replaceAll('Bass', 'Ukulele'),
         ],
       );
-      expect(song.metadata.title, 'Ukulele Song');
+      expect(song.metadata.titles.first, 'Ukulele Song');
 
       // A preprocessor that rewrites custom bracket syntax before scanning.
       final song2 = ChordPro.parseSong(
