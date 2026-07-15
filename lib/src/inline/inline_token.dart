@@ -56,6 +56,22 @@ final class AnnotationToken extends InlineToken {
   String toString() => 'AnnotationToken($text)';
 }
 
+/// A `[^]` chord-recall token (ChordPro 6.070, experimental).
+///
+/// Inside a lyric or grid line, `[^]` means "recall the next chord from
+/// the active chord-change set (`cc`)" rather than spelling out a chord
+/// name. The parser emits this dedicated token type so that renderers can
+/// implement the recall semantics without inspecting the raw string.
+///
+/// Spec: <https://www.chordpro.org/chordpro/ChordChanges/>
+final class ChordRecallToken extends InlineToken {
+  /// Creates a new [ChordRecallToken].
+  const ChordRecallToken({required super.span});
+
+  @override
+  String toString() => 'ChordRecallToken()';
+}
+
 /// An inline `{…}` directive inside a lyric line.
 final class InlineDirectiveToken extends InlineToken {
   /// Creates a new [InlineDirectiveToken].
