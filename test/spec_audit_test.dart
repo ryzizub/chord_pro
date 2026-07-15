@@ -1597,18 +1597,31 @@ hi
   // ---------------------------------------------------------------------
   group('Final-pass additions', () {
     // ---- §1.10 parser.preprocess (configuration-level) ----------------
-    test(
-      '[§1.10] AUDIT: `parser.preprocess` configurable line rewrites',
-      () {
-        // Spec: object with sub-keys `all`, `directive`, `songline`,
-        // `env-<name>`. Each rewrite item carries `target`/`pattern`,
-        // `replace`, `flags`, optional `select`. ChordPro.parse exposes
-        // no hook to register these.
-        expect(true, isTrue);
-      },
-      skip: 'AUDIT: `parser.preprocess` configuration not surfaced — no '
-          'API to register rewrite items',
-    );
+    test('[§1.10] `parser.preprocess` configurable line rewrites', () {
+      // Preprocessors are applied in list order; each receives the result
+      // of the previous and can modify directive text, chord brackets, etc.
+      final song = ChordPro.parseSong(
+        '{title: Guitar Song}\n[C]Hello [G]world',
+        preprocessors: [
+          (line) => line.replaceAll('Guitar', 'Bass'),
+          (line) => line.replaceAll('Bass', 'Ukulele'),
+        ],
+      );
+      expect(song.metadata.title, 'Ukulele Song');
+
+      // A preprocessor that rewrites custom bracket syntax before scanning.
+      final song2 = ChordPro.parseSong(
+        '{title: Test}\n<Am>Hello',
+        preprocessors: [
+          (line) => line.replaceAll('<', '[').replaceAll('>', ']'),
+        ],
+      );
+      final tokens = song2.sections.first.lines.first.tokens;
+      expect(
+        tokens.whereType<ChordToken>().first.raw,
+        'Am',
+      );
+    });
 
     // ---- §4 _key precision (capo-adjusted, not transpose-adjusted) ----
     test('[§4-_key.capo] `_key` is auto and capo-adjusted (per spec)', () {
