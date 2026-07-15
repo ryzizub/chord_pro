@@ -103,7 +103,8 @@ class Song {
 
     final newKeys = metadata.keys
         .map(
-          (k) => _transposeKey(
+          (k) =>
+              _transposeKey(
                 k,
                 semitones,
                 accidentals,

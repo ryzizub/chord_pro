@@ -1882,7 +1882,11 @@ GABc
         for (final entry in sharps.entries) {
           final c = Chord.tryParse(entry.key)!;
           final t = c.transpose(0, forceCommonKeys: true);
-          expect(t.root, entry.value, reason: '${entry.key} with forceCommonKeys');
+          expect(
+            t.root,
+            entry.value,
+            reason: '${entry.key} with forceCommonKeys',
+          );
         }
       },
     );
