@@ -24,14 +24,25 @@ class ChordPro {
   ///
   /// [notesMode] mirrors the `settings.notes` configuration option: when
   /// `true`, lowercase `a`–`g` are accepted as letter-system chord roots.
+  ///
+  /// [strict] mirrors `settings.strict`: when `true`, a warning is emitted
+  /// for each song that lacks a `{key}` directive. Defaults to `false`,
+  /// consistent with the ChordPro 6.100 change that made forgiving the
+  /// built-in default.
   static ParseResult parse(
     String source, {
     Set<String> selectors = const {},
     String? altBrackets,
     bool notesMode = false,
+    bool strict = false,
   }) {
     final input = _applyAltBrackets(source, altBrackets);
-    return assemble(input, selectors: selectors, notesMode: notesMode);
+    return assemble(
+      input,
+      selectors: selectors,
+      notesMode: notesMode,
+      strict: strict,
+    );
   }
 
   /// Convenience wrapper that returns the first song of [source].
@@ -40,12 +51,14 @@ class ChordPro {
     Set<String> selectors = const {},
     String? altBrackets,
     bool notesMode = false,
+    bool strict = false,
   }) =>
       parse(
         source,
         selectors: selectors,
         altBrackets: altBrackets,
         notesMode: notesMode,
+        strict: strict,
       ).songs.first;
 }
 
