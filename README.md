@@ -41,7 +41,7 @@ print(song.metadata.key); // first key (use `metadata.keys` for the full list)
 - **`tocSuppressed`** — `true` when `{ns toc=no}` requested the song be omitted from the table of contents.
 - **`titlesAlignment`** — typed `{titles}` alignment hint.
 - **`diagrams`** — typed `{diagrams}` (or `{g}`) setting (`enabled` flag plus position enum).
-- **`transposed(semitones)`** — returns a copy with every chord shifted.
+- **`transposed(semitones, {forceCommonKeys})`** — returns a copy with every chord shifted. Set `forceCommonKeys: true` to substitute enharmonic equivalents and keep ≤5 accidentals (`keys.force-common`).
 
 ### Walk sections and lines
 
@@ -82,6 +82,27 @@ final guitar = ChordPro.parseSong(source, selectors: {'guitar'});
 ```
 
 The selector set gates metadata, formatting, sections, comments, images, layout breaks, chord recalls, and `{define}` / `{chord}` definitions. Matching is case-insensitive.
+
+### Notes mode, strict, preprocessors
+
+```dart
+// settings.notes: accept lowercase a–g as chord roots
+final song = ChordPro.parseSong(source, notesMode: true);
+
+// settings.strict: warn when no {key} directive is present
+final result = ChordPro.parse(source, strict: true);
+for (final d in result.diagnostics) { /* check d.severity */ }
+
+// parser.preprocess: rewrite each source line before parsing
+final song2 = ChordPro.parseSong(
+  source,
+  preprocessors: [
+    (line) => line.replaceAll('«', '[').replaceAll('»', ']'),
+  ],
+);
+```
+
+`ChordRecallToken` — emitted in the inline token stream when `[^]` appears (the ChordPro 6.070 chord-recall operator). Renderers should advance their active cc-set cursor when they encounter it.
 
 ## Supported features
 
@@ -130,6 +151,11 @@ All facts per the [ChordPro chord reference][cp_chords] and [directive reference
 - ChordPro 6.060 brace-form `\u{X+}` Unicode escape (1+ hex digits, supports surrogate-pair recombination).
 - File-level `#` comments dropped.
 - `parser.altbrackets` configuration (`ChordPro.parse(..., altBrackets: '«»')`) rewrites the configured pair to `[` / `]` before parsing.
+- `parser.preprocess` hook via `preprocessors:` — a `List<Preprocessor>` of `String Function(String line)` functions applied to every source line before scanning.
+- `settings.notes` via `notesMode: true` — lowercase `a`–`g` accepted as letter-system chord roots.
+- `settings.strict` via `strict: true` — emits a `DiagnosticSeverity.warning` for any song that lacks a `{key}` directive.
+- `keys.force-common` via `forceCommonKeys: true` on `Song.transposed()` and `Chord.transpose()` — enharmonic substitution to keep ≤5 accidentals.
+- `[^]` chord-recall operator (ChordPro 6.070, experimental) emitted as `ChordRecallToken` in the inline token stream.
 - Diagnostics with 1-based source spans for every problem.
 
 ## Non-spec extensions
@@ -152,10 +178,10 @@ The parser is more lenient than the published spec in a few places. Each extensi
 - `{define format="…"}` is captured as a typed `String` but the `%{…}` substitutions inside it are not interpreted (rendering concern).
 - The directive parser closes on the first unescaped `}`, so attribute values cannot themselves contain a literal `}`.
 - `{pagetype}` lands in `Song.directives` only — no typed access.
-- The chord-changes recall token `[^]` (ChordPro 6.070, experimental) is captured as a plain chord token; the cc-set advance is a rendering concern.
+- The `[^]` chord-recall operator (ChordPro 6.070, experimental) is emitted as a `ChordRecallToken` in the inline token stream; advancing the active cc-set cursor is a rendering concern.
 - Chord-over-lyrics legacy auto-conversion (`chords-over-lyrics/`) is not implemented; supply ChordPro-format input.
-- Notes mode (lowercase / solfège chord roots, `settings.notes`) is not exposed.
-- Configuration-only switches (`parser.preprocess`, `settings.wraplines`, `settings.choruslabels`, `settings.maj7delta`, `keys.force-common`) have no surface — the parser uses the ChordPro 6.100 defaults.
+- The `preprocessors` hook applies a single rewrite function to every source line. Selective preprocessing by line type (`parser.preprocess.directive`, `parser.preprocess.songline`, `parser.preprocess.env-<name>`), regex patterns, and the `flags`/`select` rewrite-item keys have no surface.
+- Configuration-only switches (`settings.wraplines`, `settings.choruslabels`, `settings.maj7delta`) have no surface — the parser uses the ChordPro 6.100 defaults.
 
 ## Example songs
 

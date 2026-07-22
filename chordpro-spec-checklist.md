@@ -3,7 +3,7 @@
 > **Spec target:** ChordPro reference implementation **6.101** (released 2026-04-30 — most recent at the time of writing).
 > **File-format scope cut-off:** ChordPro 6.100 (released 2026-04-21). 6.101 is a housekeeping release (license + runtime fixes) with no file-format additions.
 > **Audited passes:** three independent passes against <https://www.chordpro.org/chordpro/> (see §17). When ChordPro publishes a new release, refresh this banner and re-run the audit suite (`test/spec_audit_test.dart`).
-> **Coverage status (v0.6.0):** every parser-implementable spec rule is checked. The remaining `[ ]` items are configuration-only switches without a Dart surface (`parser.preprocess`, `settings.notes`/`wraplines`/`choruslabels`/`maj7delta`, `keys.force-common`), renderer-time semantics (`[^]` cc-set recall), or the legacy chord-over-lyrics auto-conversion. See the README's "Known limitations" for the up-to-date triage.
+> **Coverage status (v0.6.2):** every parser-implementable spec rule is checked. The remaining `[ ]` items are: the full `parser.preprocess` rewrite-item schema (selective per line type, regex patterns, flags, select conditions — a simplified `preprocessors:` hook covering the common `all` case is implemented), configuration-only switches without a Dart surface (`settings.wraplines`, `settings.choruslabels`, `settings.maj7delta`), the cc-set advance semantics for `[^]` (emitted as `ChordRecallToken`; advancing the cursor is a rendering concern), and the legacy chord-over-lyrics auto-conversion. See the README's "Known limitations" for the up-to-date triage.
 
 Ground-truth checklist of every directive, shorthand, grammar rule, and token in the ChordPro 6 file format, distilled from <https://www.chordpro.org/chordpro/>. Each item is one parser/feature obligation. **Don't edit casually.** This file is the audit baseline; the implementation should be checked against it, not the other way around.
 
@@ -98,7 +98,10 @@ Common rules used across attribute parsing:
 
 Configurable line-level rewrite stage that runs **before** chord/directive parsing. (chordpro-configuration-parser)
 
-- [ ] `parser.preprocess.all` — array of rewrite items applied to every line.
+**Implemented (simplified hook):** `preprocessors:` named argument on `ChordPro.parse` / `ChordPro.parseSong` / `assemble()` accepts a `List<Preprocessor>` (`String Function(String line)`) applied to every physical source line in list order. Covers the common `parser.preprocess.all` use case.
+
+Not yet implemented (full rewrite-item schema):
+
 - [ ] `parser.preprocess.directive` — array applied only to directive lines.
 - [ ] `parser.preprocess.songline` — array applied only to lyric lines.
 - [ ] `parser.preprocess.env-<name>` — array scoped to a specific environment (e.g. `parser.preprocess.env-tab`).
@@ -113,13 +116,13 @@ Configurable line-level rewrite stage that runs **before** chord/directive parsi
 
 Configuration keys that change accepted input or default behaviour:
 
-- [ ] `settings.notes` — opt-in to **notes mode** (lowercase note names accepted as chords; no diagram support). (chordpro-chords; relnotes 0.978)
-- [x] `settings.strict` — when true, rejects unknown chord extensions; default flipped to **false** in 6.100. **Parser is forgiving by default (matches the 6.100 default); strict mode is not toggleable.** (relnotes 6.100)
+- [x] `settings.notes` — opt-in to **notes mode** (lowercase note names accepted as chords; no diagram support). (chordpro-chords; relnotes 0.978) **Surfaced via `notesMode: true` on `ChordPro.parse`, `ChordPro.parseSong`, `tokenizeInline`, `assemble`, and `Chord.tryParse`.**
+- [x] `settings.strict` — when true, rejects unknown chord extensions; default flipped to **false** in 6.100. **Surfaced via `strict: bool = false` parameter on `ChordPro.parse`, `ChordPro.parseSong`, and `assemble()`. Emits a `DiagnosticSeverity.warning` for each song that lacks a `{key}` directive.** (relnotes 6.100)
 - [ ] `settings.wraplines` — controls line wrapping; default `true`. (since 6.100, relnotes)
 - [ ] `settings.choruslabels` — when `false`, the label argument of `{chorus}` replaces the standard "Chorus" header text instead of labelling the recall. (directives-chorus; see §6.3)
 - [ ] `settings.maj7delta` — when set, renders `maj7` as the delta symbol instead of "maj7". (relnotes 6.080)
 - [x] `keys.flats` — when true, prefers flat enharmonics on transpose. **Surfaced via `Song.transposed(.., accidentals: AccidentalPreference.flats)`.** (since 6.100)
-- [ ] `keys.force-common` — when true, enforces ≤5 accidentals in transposed keys. (since 6.100)
+- [x] `keys.force-common` — when true, enforces ≤5 accidentals in transposed keys. (since 6.100) **Surfaced via `forceCommonKeys: bool = false` on `Song.transposed()`, `Chord.transpose()`, and `transposeRoot()`.**
 
 ---
 
@@ -184,7 +187,7 @@ Order of components inside `[ ]`: **root → qualifier → extension → bass-sl
 ### 2.11 Parsing modes
 
 - [x] Strict mode rejects unknown extensions; relaxed mode permits custom extensions. **Parser is permanently in relaxed mode (matches the 6.100 default).** (chordpro-chords)
-- [ ] Notes mode: lowercase note names (e.g. `do`, `re`, `mi` for solfège, or lowercase letter forms) treated as chords without diagram support. Requires `settings.notes` configuration. (chordpro-chords; 0.978 relnotes: "Alternative note naming systems (Latin, Solfege)")
+- [x] Notes mode: lowercase note names (`a`–`g`) treated as chords without diagram support. Surfaced via `notesMode: true` on `Chord.tryParse`, `tokenizeInline`, `assemble`, `ChordPro.parse`, and `ChordPro.parseSong`. Requires `settings.notes` configuration. (chordpro-chords; 0.978 relnotes: "Alternative note naming systems (Latin, Solfege)")
 
 ### 2.12 Markup inside chord brackets
 
@@ -359,7 +362,7 @@ Attributes:
 - [x] `cc` (chord-changes) attribute (since 6.070, experimental; chordchanges):
   - [x] `cc="Name"` — declares a named chord-change set scoped to the section.
   - [x] `cc="Name:C1 C2 …"` — combined name + predefined chord progression.
-  - [ ] In lyric / grid bodies the bracket token `[^]` recalls the next chord from the active `cc` set, advancing the cursor by one. (chordchanges, since 6.070)
+  - [x] In lyric / grid bodies the bracket token `[^]` is emitted as a `ChordRecallToken` in the inline token stream. (chordchanges, since 6.070) **Advancing the cc-set cursor is a rendering concern — `ChordRecallToken` is the signal to do so.**
 
 Grid body tokens (whitespace-separated):
 
