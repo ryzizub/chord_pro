@@ -112,14 +112,29 @@ class Chord {
   /// other systems are returned unchanged because Nashville and Roman
   /// notation already abstract over key. Returns `this` when the root
   /// is unrecognised.
+  ///
+  /// When [forceCommonKeys] is `true` (mirrors the `keys.force-common`
+  /// ChordPro configuration option), roots that result in key signatures
+  /// with more than 5 accidentals are substituted with their enharmonic
+  /// equivalents: `C#`→`Db`, `D#`→`Eb`, `G#`→`Ab`, `A#`→`Bb`.
   Chord transpose(
     int semitones, {
     AccidentalPreference accidentals = AccidentalPreference.sharps,
+    bool forceCommonKeys = false,
   }) {
     if (system != ChordSystem.letter) return this;
-    final newRoot = transposeRoot(root, semitones, accidentals: accidentals);
+    final newRoot = transposeRoot(
+      root,
+      semitones,
+      accidentals: accidentals,
+      forceCommonKeys: forceCommonKeys,
+    );
     if (newRoot == null) return this;
-    final newBass = bass?.transpose(semitones, accidentals: accidentals);
+    final newBass = bass?.transpose(
+      semitones,
+      accidentals: accidentals,
+      forceCommonKeys: forceCommonKeys,
+    );
     final raw = _renderLetter(newRoot, quality, extensions, newBass);
     return Chord(
       system: system,
@@ -139,19 +154,39 @@ class Chord {
 /// [semitones], returning the transposed spelling or `null` when
 /// [root] is not a recognised letter root. Unicode accidentals
 /// (`♯`/`♭`) and German `H` (= B natural) are accepted on input.
+///
+/// When [forceCommonKeys] is `true`, roots that produce key signatures
+/// with more than 5 accidentals are replaced with their enharmonic
+/// equivalents (`C#`→`Db`, `D#`→`Eb`, `G#`→`Ab`, `A#`→`Bb`).
 String? transposeRoot(
   String root,
   int semitones, {
   AccidentalPreference accidentals = AccidentalPreference.sharps,
+  bool forceCommonKeys = false,
 }) {
   final s = _rootToSemitone[_canonicaliseRoot(root)];
   if (s == null) return null;
   final shifted = (s + semitones) % 12;
   final positive = shifted < 0 ? shifted + 12 : shifted;
-  return accidentals == AccidentalPreference.flats
+  final result = accidentals == AccidentalPreference.flats
       ? _semitoneToFlat[positive]
       : _semitoneToSharp[positive];
+  if (!forceCommonKeys) return result;
+  return _forceCommonKeys[result] ?? result;
 }
+
+/// Enharmonic substitutions applied when `forceCommonKeys=true`.
+///
+/// Replaces roots with more than 5 accidentals in their key signature
+/// with the equivalent flat spelling (≤5 accidentals). Only sharp roots
+/// are affected; flat results from the chromatic table are already ≤6
+/// accidentals and no simpler enharmonic exists.
+const Map<String, String> _forceCommonKeys = {
+  'C#': 'Db', // 7♯ → 5♭
+  'D#': 'Eb', // 9♯ → 3♭
+  'G#': 'Ab', // 8♯ → 4♭
+  'A#': 'Bb', // 10♯ → 2♭
+};
 
 String _canonicaliseRoot(String root) {
   if (root.isEmpty) return root;

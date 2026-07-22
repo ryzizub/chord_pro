@@ -68,9 +68,15 @@ class Song {
   /// other notations (Nashville, Roman) are key-agnostic and pass
   /// through unchanged. The song key in [Metadata.key] is also remapped
   /// when it points at a recognised root.
+  ///
+  /// When [forceCommonKeys] is `true` (mirrors the `keys.force-common`
+  /// ChordPro 6.100 configuration option), roots that would produce a key
+  /// signature with more than 5 accidentals are substituted with their
+  /// enharmonic equivalents: `C#`→`Db`, `D#`→`Eb`, `G#`→`Ab`, `A#`→`Bb`.
   Song transposed(
     int semitones, {
     AccidentalPreference accidentals = AccidentalPreference.sharps,
+    bool forceCommonKeys = false,
   }) {
     if (semitones % 12 == 0) return this;
     final newSections = sections
@@ -83,7 +89,12 @@ class Song {
             span: s.span,
             lines: s.lines
                 .map(
-                  (line) => _transposeLine(line, semitones, accidentals),
+                  (line) => _transposeLine(
+                    line,
+                    semitones,
+                    accidentals,
+                    forceCommonKeys: forceCommonKeys,
+                  ),
                 )
                 .toList(growable: false),
           ),
@@ -91,7 +102,16 @@ class Song {
         .toList(growable: false);
 
     final newKeys = metadata.keys
-        .map((k) => _transposeKey(k, semitones, accidentals) ?? k)
+        .map(
+          (k) =>
+              _transposeKey(
+                k,
+                semitones,
+                accidentals,
+                forceCommonKeys: forceCommonKeys,
+              ) ??
+              k,
+        )
         .toList(growable: false);
 
     return Song(
@@ -138,19 +158,27 @@ class Song {
 String? _transposeKey(
   String? key,
   int semitones,
-  AccidentalPreference accidentals,
-) {
+  AccidentalPreference accidentals, {
+  bool forceCommonKeys = false,
+}) {
   if (key == null) return null;
   final chord = Chord.tryParse(key);
   if (chord == null || chord.system != ChordSystem.letter) return key;
-  return chord.transpose(semitones, accidentals: accidentals).raw;
+  return chord
+      .transpose(
+        semitones,
+        accidentals: accidentals,
+        forceCommonKeys: forceCommonKeys,
+      )
+      .raw;
 }
 
 Line _transposeLine(
   Line line,
   int semitones,
-  AccidentalPreference accidentals,
-) {
+  AccidentalPreference accidentals, {
+  bool forceCommonKeys = false,
+}) {
   if (line.kind != LineKind.structured) return line;
   final newTokens = <InlineToken>[];
   for (final token in line.tokens) {
@@ -158,6 +186,7 @@ Line _transposeLine(
       final transposed = token.chord!.transpose(
         semitones,
         accidentals: accidentals,
+        forceCommonKeys: forceCommonKeys,
       );
       newTokens.add(
         ChordToken(raw: transposed.raw, chord: transposed, span: token.span),
