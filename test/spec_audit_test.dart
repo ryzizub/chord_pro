@@ -1679,17 +1679,16 @@ hi
     });
 
     test(
-      '[§6.4-recall] AUDIT: `[^]` token recalls next chord from active cc set',
+      '[§6.4-recall] `[^]` token emits ChordRecallToken (ChordPro 6.070)',
       () {
-        // ChordPro 6.070 experimental. `[^]` should resolve to the
-        // next chord in the active cc set; here it parses as a
-        // generic chord token because the chord grammar accepts the
-        // literal raw value.
-        final s = ChordPro.parseSong('{sog cc="X:C G"}\n[^] [^]\n{eog}');
-        final g = s.sections.firstWhere((sec) => sec.kind == SectionKind.grid);
-        expect(g.lines, isNotEmpty);
+        // The tokenizer must emit ChordRecallToken for `[^]` so that
+        // renderers can implement cc-set recall without inspecting raw strings.
+        final tokens = tokenizeInline(
+          const RawLine(number: 1, text: '[^]some text[^]'),
+        );
+        final recalls = tokens.whereType<ChordRecallToken>().toList();
+        expect(recalls, hasLength(2));
       },
-      skip: 'AUDIT: `[^]` chord-changes recall token not implemented',
     );
 
     // ---- §6.5 ABC transpose cascade (corrected) -----------------------

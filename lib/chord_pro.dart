@@ -31,6 +31,7 @@ export 'src/directive/image_directive.dart'
 export 'src/inline/inline_token.dart'
     show
         AnnotationToken,
+        ChordRecallToken,
         ChordToken,
         InlineDirectiveToken,
         InlineToken,

@@ -70,6 +70,9 @@ List<InlineToken> tokenizeInline(RawLine line) {
       if (inner.isEmpty) {
         // Empty `[]` is a zero-width placeholder per ChordPro 6.080
         // emergency-bracket handling — emit no token.
+      } else if (inner == '^') {
+        // `[^]` is the chord-recall operator per ChordPro 6.070.
+        out.add(ChordRecallToken(span: span));
       } else if (inner.startsWith('*')) {
         out.add(AnnotationToken(text: inner.substring(1), span: span));
       } else if (inner == '|' || _isWhitespaceOnly(inner)) {

@@ -1,3 +1,22 @@
+## 0.6.2
+
+### Breaking
+
+* `InlineToken` is a `sealed class`. Adding `ChordRecallToken` to its
+  hierarchy is a breaking change for any code with an exhaustive `switch`
+  on `InlineToken` subtypes. Add a `ChordRecallToken` case (or a wildcard
+  `_` fallback) to fix.
+
+### New
+
+* `ChordRecallToken` — new `InlineToken` subtype emitted when the tokenizer
+  encounters `[^]`, the chord-recall operator introduced in ChordPro 6.070
+  (experimental). Renderers should advance the active chord-change set (`cc`)
+  cursor when they encounter this token.
+  Spec: <https://www.chordpro.org/chordpro/ChordChanges/>
+
+---
+
 ## 0.6.1
 
 Maintenance release: adds the `grille` delegated environment and corrects

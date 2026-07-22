@@ -62,5 +62,18 @@ void main() {
       expect(chord.raw, '???');
       expect(chord.chord, isNull);
     });
+
+    test('[^] emits ChordRecallToken, not ChordToken', () {
+      final tokens = tokenizeInline(_line('[^]word'));
+      expect(tokens, hasLength(2));
+      expect(tokens[0], isA<ChordRecallToken>());
+      expect(tokens[1], isA<TextToken>());
+    });
+
+    test('multiple [^] tokens', () {
+      final tokens = tokenizeInline(_line('[^][^]'));
+      expect(tokens, hasLength(2));
+      expect(tokens.every((t) => t is ChordRecallToken), isTrue);
+    });
   });
 }
