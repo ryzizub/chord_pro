@@ -1,6 +1,6 @@
 name: chord_pro
 description: A Dart parser for the ChordPro 6 song format. Extracts chords, lyrics, metadata, comments, layout hints and chord diagrams.
-version: 0.6.1
+version: 0.6.2
 repository: https://github.com/ryzizub/chord_pro
 
 environment:
