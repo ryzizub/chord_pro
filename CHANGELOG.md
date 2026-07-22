@@ -32,6 +32,12 @@
   `C#`→`Db`, `D#`→`Eb`, `G#`→`Ab`, `A#`→`Bb`. Mirrors the `keys.force-common`
   ChordPro 6.100 configuration option. Defaults to `false`; no behaviour change
   for existing call sites.
+* `Preprocessor` typedef (`String Function(String line)`) exported from
+  `package:chord_pro/chord_pro.dart`. Pass a list of preprocessors to
+  `ChordPro.parse` / `ChordPro.parseSong` via the `preprocessors:` named
+  argument; each function is applied to every physical source line in list
+  order before scanning begins. Line endings (`\r\n`, `\r`) are normalised
+  to `\n` before preprocessing.
 
 ---
 

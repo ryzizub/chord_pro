@@ -6,6 +6,7 @@ import 'package:chord_pro/src/ast/section.dart';
 import 'package:chord_pro/src/ast/song.dart';
 import 'package:chord_pro/src/ast/titles_alignment.dart';
 import 'package:chord_pro/src/chord/chord_definition.dart';
+import 'package:chord_pro/src/chord_pro.dart' show Preprocessor;
 import 'package:chord_pro/src/diagnostic/diagnostic.dart';
 import 'package:chord_pro/src/diagnostic/parse_result.dart';
 import 'package:chord_pro/src/directive/directive.dart';
@@ -31,16 +32,21 @@ import 'package:chord_pro/src/source/source_span.dart';
 /// When `true`, a [DiagnosticSeverity.warning] is emitted for each song that
 /// lacks a `{key}` directive. Defaults to `false`, matching the ChordPro
 /// 6.100 change that flipped the built-in default from strict to forgiving.
+///
+/// [preprocessors] is a list of [Preprocessor] functions applied to each
+/// physical source line (in order) before the scanner processes it.
+/// Mirrors the `parser.preprocess` ChordPro configuration option.
 ParseResult assemble(
   String source, {
   Set<String> selectors = const {},
   bool notesMode = false,
   bool strict = false,
+  List<Preprocessor> preprocessors = const [],
 }) {
   final activeSelectors = selectors.isEmpty
       ? const <String>{}
       : {for (final s in selectors) s.toLowerCase()};
-  final lines = scan(source);
+  final lines = scan(_applyPreprocessors(source, preprocessors));
   final diagnostics = <Diagnostic>[];
   final songs = <Song>[];
 
@@ -664,4 +670,24 @@ bool _isFalsy(String? value) {
       v == 'no' ||
       v == 'none' ||
       v == 'off';
+}
+
+/// Applies [preprocessors] to each physical line in [source] and rejoins
+/// with `\n`. Line endings are normalised to `\n` before splitting so
+/// Windows (`\r\n`) and classic Mac (`\r`) inputs are handled uniformly.
+/// If [preprocessors] is empty the original [source] is returned unchanged.
+String _applyPreprocessors(String source, List<Preprocessor> preprocessors) {
+  if (preprocessors.isEmpty) return source;
+  final normalised = source.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+  final lines = normalised.split('\n');
+  final result = StringBuffer();
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    for (final p in preprocessors) {
+      line = p(line);
+    }
+    if (i > 0) result.write('\n');
+    result.write(line);
+  }
+  return result.toString();
 }
