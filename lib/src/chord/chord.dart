@@ -59,7 +59,12 @@ class Chord {
   /// Returns `null` if [raw] is empty or starts with whitespace; never
   /// throws. Unknown bodies are captured via [root] + [raw] so callers
   /// can still display them.
-  static Chord? tryParse(String raw) {
+  ///
+  /// When [notesMode] is `true` (mirrors the `settings.notes` config option),
+  /// lowercase `a`–`g` are accepted as letter-system root notes in addition to
+  /// the standard uppercase `A`–`G`. Transposition of notes-mode roots uses
+  /// the same chromatic table as uppercase roots.
+  static Chord? tryParse(String raw, {bool notesMode = false}) {
     if (raw.isEmpty) return null;
     if (_isWhitespace(raw.codeUnitAt(0))) return null;
 
@@ -74,12 +79,12 @@ class Chord {
     final tail = slash < 0 ? null : raw.substring(slash + 1);
     if (head.isEmpty) return null;
 
-    final headParsed = _parseSimple(head);
+    final headParsed = _parseSimple(head, notesMode: notesMode);
     if (headParsed == null) return null;
 
     Chord? bass;
     if (tail != null && tail.isNotEmpty) {
-      final parsedBass = _parseSimple(tail);
+      final parsedBass = _parseSimple(tail, notesMode: notesMode);
       if (parsedBass != null) {
         bass = Chord(
           system: parsedBass.system,
@@ -150,12 +155,15 @@ String? transposeRoot(
 
 String _canonicaliseRoot(String root) {
   if (root.isEmpty) return root;
-  // German H → B natural.
   final canonical = StringBuffer();
   for (var i = 0; i < root.length; i++) {
     final c = root.codeUnitAt(i);
     if (i == 0 && c == 0x48) {
+      // German H → B natural.
       canonical.write('B');
+    } else if (i == 0 && c >= 0x61 && c <= 0x67) {
+      // Notes-mode lowercase a-g → uppercase for chromatic table lookup.
+      canonical.writeCharCode(c - 0x20);
     } else if (c == 0x266F) {
       canonical.write('#');
     } else if (c == 0x266D) {
@@ -217,8 +225,8 @@ class _Parsed {
   final List<String> extensions;
 }
 
-_Parsed? _parseSimple(String s) {
-  final rootEnd = _rootEnd(s);
+_Parsed? _parseSimple(String s, {bool notesMode = false}) {
+  final rootEnd = _rootEnd(s, notesMode: notesMode);
   if (rootEnd == 0) return null;
   final root = s.substring(0, rootEnd);
   final system = _systemFor(root);
@@ -242,10 +250,19 @@ _Parsed? _parseSimple(String s) {
   return _Parsed(system, root, quality, extensions);
 }
 
-int _rootEnd(String s) {
+int _rootEnd(String s, {bool notesMode = false}) {
   final c0 = s.codeUnitAt(0);
   // Letter (A-H) chord. H is German notation for B.
   if ((c0 >= 0x41 && c0 <= 0x47) || c0 == 0x48) {
+    var i = 1;
+    if (i < s.length && _isAccidental(s.codeUnitAt(i))) {
+      i++;
+    }
+    return i;
+  }
+  // Notes mode: lowercase a-g are letter roots (mirrors `settings.notes`).
+  // Checked before the accidental branch so that `b` is a root, not a flat.
+  if (notesMode && c0 >= 0x61 && c0 <= 0x67) {
     var i = 1;
     if (i < s.length && _isAccidental(s.codeUnitAt(i))) {
       i++;
@@ -272,6 +289,8 @@ int _rootEnd(String s) {
 ChordSystem _systemFor(String root) {
   final c0 = root.codeUnitAt(0);
   if ((c0 >= 0x41 && c0 <= 0x47) || c0 == 0x48) return ChordSystem.letter;
+  // Notes-mode lowercase a-g → letter system.
+  if (c0 >= 0x61 && c0 <= 0x67) return ChordSystem.letter;
   if (_isNashvilleDigit(c0) || _isAccidental(c0)) {
     return ChordSystem.nashville;
   }

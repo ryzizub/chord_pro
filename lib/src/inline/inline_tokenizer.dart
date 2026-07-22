@@ -18,7 +18,10 @@ import 'package:chord_pro/src/source/source_span.dart';
 ///
 /// Backslash escapes (`\[`, `\]`, `\{`, `\}`, `\\`) are honoured and
 /// unescaped in the emitted [TextToken]s.
-List<InlineToken> tokenizeInline(RawLine line) {
+///
+/// When [notesMode] is `true`, lowercase `a`–`g` are accepted as letter
+/// chord roots inside `[…]` brackets (mirrors the `settings.notes` config).
+List<InlineToken> tokenizeInline(RawLine line, {bool notesMode = false}) {
   final text = line.text;
   final out = <InlineToken>[];
   final buffer = StringBuffer();
@@ -82,7 +85,11 @@ List<InlineToken> tokenizeInline(RawLine line) {
         out.add(AnnotationToken(text: inner, span: span));
       } else {
         out.add(
-          ChordToken(raw: inner, chord: Chord.tryParse(inner), span: span),
+          ChordToken(
+            raw: inner,
+            chord: Chord.tryParse(inner, notesMode: notesMode),
+            span: span,
+          ),
         );
       }
       i = closed + 1;

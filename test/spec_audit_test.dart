@@ -1319,13 +1319,25 @@ Swing low, sweet chariot,
     });
 
     test(
-      '[§2.11+] AUDIT: notes mode (lowercase note names) needs config opt-in',
+      '[§2.11+] notesMode accepts lowercase a-g as letter chord roots',
       () {
-        // Spec: `settings.notes` enables solfège or lowercase letters as
-        // chord roots. No surface in this parser.
-        expect(true, isTrue);
+        // `notesMode: true` opts into lowercase letter roots per
+        // `settings.notes`. Standard mode must NOT accept them.
+        final standard = Chord.tryParse('am');
+        expect(standard, isNull, reason: 'am unparseable in standard mode');
+
+        final c = Chord.tryParse('am', notesMode: true);
+        expect(c, isNotNull);
+        expect(c!.system, ChordSystem.letter);
+        expect(c.root, 'a');
+        expect(c.quality, 'm');
+
+        // Full parse round-trip via ChordPro.parseSong.
+        final song = ChordPro.parseSong('[am]word', notesMode: true);
+        final chord =
+            song.sections.first.lines.first.tokens.first as ChordToken;
+        expect(chord.chord?.root, 'a');
       },
-      skip: 'AUDIT: notes-mode configuration not implemented',
     );
   });
 
