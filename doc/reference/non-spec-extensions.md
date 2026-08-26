@@ -11,3 +11,4 @@ The parser is more lenient than the published spec in a few places. Each extensi
 | Backslash escapes inside lyrics | —                    | Escape `[`, `]`, `{`, `}`, `\` inside lyric lines.     |
 | Mid-lyric `{…}` directives      | —                    | Spec requires directives to occupy a whole line.       |
 | `{name-!sel}`, `{name+sel}`     | `{name-sel!}`        | Legacy negative-selector forms; new files use the spec form. |
+| `{colb}`                        | `{column_break}`     | Extra short form for `{column_break}`. The spec shorthand `{cb}` is shared with `{comment_box}`; this parser preserves `{cb}` for `{comment_box}` and introduces `{colb}` for unambiguous use. |
