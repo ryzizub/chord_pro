@@ -1,3 +1,24 @@
+## 0.6.3
+
+Maintenance release: documents the `{colb}` shorthand, adds a
+reverse-direction spec-coverage guard to the test suite, and widens the
+`very_good_analysis` dev-dependency constraint to `<12.0.0`. No parser or
+public API changes.
+
+### Fixed
+
+* `{colb}` — the parser's non-spec shorthand for `{column_break}` — is now
+  listed in the non-spec extensions table
+  (`doc/reference/non-spec-extensions.md`). The spec's own shorthand `{cb}`
+  is already taken by `{comment_box}`, so `{colb}` provides an unambiguous
+  short form. It was recognised by the assembler but undocumented; a new
+  `test/spec_coverage_test.dart` guard now fails when any name in the
+  parser's dispatch tables is absent from both the spec checklist and that
+  table.
+  Spec: <https://www.chordpro.org/chordpro/directives-column_break/>
+
+---
+
 ## 0.6.2
 
 ### Breaking
