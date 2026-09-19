@@ -21,6 +21,9 @@ import 'package:chord_pro/src/source/source_span.dart';
 ///
 /// When [notesMode] is `true`, lowercase `a`–`g` are accepted as letter
 /// chord roots inside `[…]` brackets (mirrors the `settings.notes` config).
+///
+/// The returned list is unmodifiable: parsed lines are values, and
+/// mutating one in place would corrupt a shared `Line`.
 List<InlineToken> tokenizeInline(RawLine line, {bool notesMode = false}) {
   final text = line.text;
   final out = <InlineToken>[];
@@ -123,7 +126,7 @@ List<InlineToken> tokenizeInline(RawLine line, {bool notesMode = false}) {
   }
 
   flushText(i);
-  return out;
+  return List.unmodifiable(out);
 }
 
 bool _isWhitespaceOnly(String s) {

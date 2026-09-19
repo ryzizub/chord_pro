@@ -30,8 +30,15 @@ class ChordPro {
   /// is not.
   ///
   /// [altBrackets] mirrors the `parser.altbrackets` configuration: when
-  /// set to a two-character pair (e.g. `«»`), those characters are
-  /// rewritten to `[` / `]` before parsing.
+  /// set to a two-character pair (e.g. `«»`), those characters are read
+  /// as chord brackets.
+  ///
+  /// The rewrite is applied to lyric lines only. Directive values and
+  /// verbatim bodies (`tab`, `grid`, `abc`, `ly`, `svg`, `textblock`,
+  /// `grille`) keep the characters verbatim, so a song that uses `«»`
+  /// as quotation marks in a `{title}` or inside a tab block is not
+  /// mangled. Throws [ArgumentError] when the pair is not exactly two
+  /// characters.
   ///
   /// [notesMode] mirrors the `settings.notes` configuration option: when
   /// `true`, lowercase `a`–`g` are accepted as letter-system chord roots.
@@ -54,13 +61,14 @@ class ChordPro {
     bool strict = false,
     List<Preprocessor> preprocessors = const [],
   }) {
-    final input = _applyAltBrackets(source, altBrackets);
+    _validateAltBrackets(altBrackets);
     return assemble(
-      input,
+      source,
       selectors: selectors,
       notesMode: notesMode,
       strict: strict,
       preprocessors: preprocessors,
+      altBrackets: altBrackets,
     );
   }
 
@@ -83,17 +91,13 @@ class ChordPro {
       ).songs.first;
 }
 
-String _applyAltBrackets(String source, String? pair) {
-  if (pair == null) return source;
-  final runes = pair.runes.toList(growable: false);
-  if (runes.length != 2) {
+void _validateAltBrackets(String? pair) {
+  if (pair == null) return;
+  if (pair.runes.length != 2) {
     throw ArgumentError.value(
       pair,
       'altBrackets',
       'must be exactly two characters',
     );
   }
-  final open = String.fromCharCode(runes[0]);
-  final close = String.fromCharCode(runes[1]);
-  return source.replaceAll(open, '[').replaceAll(close, ']');
 }

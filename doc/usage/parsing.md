@@ -38,4 +38,33 @@ for (final section in song.sections) {
 }
 ```
 
+## Read the diagnostics
+
+```dart
+for (final diagnostic in result.diagnostics) {
+  switch (diagnostic.code) {
+    case DiagnosticCode.unterminatedSection:
+      // ... a {start_of_X} with no matching end
+    case DiagnosticCode.invalidNumericValue:
+      // ... e.g. {capo: high}
+    default:
+      print(diagnostic); // "[warning] 4:1+12: ..."
+  }
+}
+```
+
+Every diagnostic carries a `DiagnosticCode`, a `DiagnosticSeverity` and a 1-based `SourceSpan`. Switch on the code: `message` is prose for humans and may be reworded in any release.
+
+Parsing never throws on malformed input — problems come back as diagnostics and the parser recovers — so `result.songs` always holds at least one song.
+
+## Compare parsed values
+
+Every type in the AST compares structurally, so parsed songs can be diffed, deduped, cached or used as map keys:
+
+```dart
+ChordPro.parseSong(source) == ChordPro.parseSong(source); // true
+```
+
+The AST is also deeply unmodifiable: `sections`, `lines`, `tokens`, `attributes` and the metadata collections all reject mutation, and every transform (`Song.transposed`, `Chord.transpose`) returns a new value.
+
 See also: [the `Song` model](song-model.md), [transposing and selectors](transposing.md).

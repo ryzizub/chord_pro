@@ -1,5 +1,6 @@
 import 'package:chord_pro/src/directive/kv_parser.dart';
 import 'package:chord_pro/src/source/source_span.dart';
+import 'package:chord_pro/src/util/equality.dart';
 
 /// Where an `{image}` is anchored on the page.
 ///
@@ -157,18 +158,46 @@ class ImageDirective {
 
   /// Span covering the original `{image: …}` directive.
   final SourceSpan span;
+
+  // Every typed field above is derived from [attributes], so comparing
+  // the span and the map compares the whole directive.
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ImageDirective &&
+          other.span == span &&
+          mapEquals(other.attributes, attributes);
+
+  @override
+  int get hashCode => Object.hash(span, mapHash(attributes));
+}
+
+/// Whether [name] carries no attribute name at all once surrounding
+/// quotes and whitespace are removed — `{image: ""}` parses to a single
+/// attribute whose name is `""`.
+bool _isBlankAttributeName(String name) {
+  var trimmed = name.trim();
+  while (trimmed.length >= 2 &&
+      (trimmed.startsWith('"') && trimmed.endsWith('"') ||
+          trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    trimmed = trimmed.substring(1, trimmed.length - 1).trim();
+  }
+  return trimmed.isEmpty;
 }
 
 /// Parses the body of an `{image: …}` directive.
 ///
-/// Returns `null` when [value] is empty. Malformed or duplicated
-/// attributes are kept; the last value for a key wins.
+/// Returns `null` when [value] is empty or carries no usable attribute —
+/// `{image: ""}` names nothing, so it is malformed rather than an image
+/// with no source. Duplicated attributes are kept; the last value for a
+/// key wins.
 ImageDirective? parseImageDirective(
   String value, {
   required SourceSpan span,
 }) {
   if (value.isEmpty) return null;
   final attrs = parseKv(value);
+  if (attrs.keys.every(_isBlankAttributeName)) return null;
 
   return ImageDirective(
     span: span,

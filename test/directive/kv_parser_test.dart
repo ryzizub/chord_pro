@@ -27,6 +27,21 @@ void main() {
     });
   });
 
+  group('parseKv recovery', () {
+    test('an unterminated quoted value runs to the end of the input', () {
+      expect(parseKv('label="Verse 1'), {'label': 'Verse 1'});
+      expect(parseKv("label='Verse 1"), {'label': 'Verse 1'});
+    });
+
+    test('a key with no value is a bare attribute', () {
+      expect(parseKv('omit'), {'omit': ''});
+    });
+
+    test('a trailing equals gives an empty value', () {
+      expect(parseKv('label='), {'label': ''});
+    });
+  });
+
   group('parseKv with defaultKey', () {
     test('bare leading value goes to defaultKey', () {
       expect(parseKv('Verse 1', defaultKey: 'label'), {'label': 'Verse 1'});

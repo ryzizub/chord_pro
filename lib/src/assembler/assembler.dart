@@ -36,17 +36,23 @@ import 'package:chord_pro/src/source/source_span.dart';
 /// [preprocessors] is a list of [Preprocessor] functions applied to each
 /// physical source line (in order) before the scanner processes it.
 /// Mirrors the `parser.preprocess` ChordPro configuration option.
+///
+/// [altBrackets] is the already-validated two-character alternate chord
+/// bracket pair (see `ChordPro.parse`). It is applied to lyric lines only,
+/// so verbatim bodies and directive values keep the characters verbatim.
 ParseResult assemble(
   String source, {
   Set<String> selectors = const {},
   bool notesMode = false,
   bool strict = false,
   List<Preprocessor> preprocessors = const [],
+  String? altBrackets,
 }) {
   final activeSelectors = selectors.isEmpty
       ? const <String>{}
       : {for (final s in selectors) s.toLowerCase()};
   final lines = scan(_applyPreprocessors(source, preprocessors));
+  final brackets = _AltBrackets.from(altBrackets);
   final diagnostics = <Diagnostic>[];
   final songs = <Song>[];
 
@@ -58,6 +64,11 @@ ParseResult assemble(
   // current selector set: every line until the matching `end_of_X` is
   // suppressed (still appended to the directive stream for round-trip).
   _StartKind? skipUntilEnd;
+  // Span of the `start_of_X` that opened [skipUntilEnd], for diagnostics.
+  SourceSpan? skipStartSpan;
+  // Nesting depth inside the suppressed section: a same-kind start
+  // directive inside it must not be closed by the first inner end.
+  var skipDepth = 0;
   // Set by a preceding `{ns toc=no}` (or false/0) — applied to the
   // *next* song that opens. Reset after consumption.
   var pendingTocSuppressed = false;
@@ -65,6 +76,12 @@ ParseResult assemble(
   TitlesAlignment? titlesAlignment;
   // Set by `{diagrams}` (or `{g}` alias) in the current song.
   DiagramsSetting? diagrams;
+  // A `{chorus}` recall auto-closes the section it appeared inside so the
+  // recall keeps its place in `sections`. That section's own end
+  // directive then has nothing left to close, and reporting it as a stray
+  // end would blame the author for the parser's recovery — so it is
+  // consumed silently instead.
+  _StartKind? recallAutoClosed;
 
   void closeLoose() {
     if (open != null && open!.kind == SectionKind.loose) {
@@ -75,11 +92,28 @@ ParseResult assemble(
   }
 
   void finishSong() {
+    if (skipUntilEnd != null) {
+      diagnostics.add(
+        Diagnostic(
+          severity: DiagnosticSeverity.warning,
+          code: DiagnosticCode.unterminatedSuppressedSection,
+          message: 'Unterminated selector-suppressed '
+              '${skipUntilEnd!.kind.name} section; everything up to here '
+              'was suppressed.',
+          span:
+              skipStartSpan ?? const SourceSpan(line: 1, column: 1, length: 0),
+        ),
+      );
+      skipUntilEnd = null;
+      skipStartSpan = null;
+      skipDepth = 0;
+    }
     if (open != null) {
       if (open!.kind != SectionKind.loose) {
         diagnostics.add(
           Diagnostic(
             severity: DiagnosticSeverity.warning,
+            code: DiagnosticCode.unterminatedSection,
             message: 'Unterminated ${open!.kind.name} section at end of song.',
             span: open!.startSpan,
           ),
@@ -89,21 +123,29 @@ ParseResult assemble(
       if (s != null) sections.add(s);
       open = null;
     }
-    if (strict && !directives.any((d) => d.name == 'key')) {
+    final metadata = reduceMetadata(
+      _expandMeta(directives, diagnostics),
+      includeSelected: activeSelectors,
+      diagnostics: diagnostics,
+    );
+    // Checked against the reduced metadata rather than the raw directive
+    // stream so `{meta: key D}` counts, and anchored on the song's own
+    // first directive so the span points at the right song.
+    if (strict && metadata.keys.isEmpty) {
       diagnostics.add(
-        const Diagnostic(
+        Diagnostic(
           severity: DiagnosticSeverity.warning,
+          code: DiagnosticCode.missingKey,
           message: 'No {key} directive found (required by settings.strict).',
-          span: SourceSpan(line: 1, column: 1, length: 0),
+          span: directives.isEmpty
+              ? const SourceSpan(line: 1, column: 1, length: 0)
+              : directives.first.span,
         ),
       );
     }
     songs.add(
       Song(
-        metadata: reduceMetadata(
-          _expandMeta(directives, diagnostics),
-          includeSelected: activeSelectors,
-        ),
+        metadata: metadata,
         directives: List.unmodifiable(directives),
         sections: List.unmodifiable(sections),
         chordDefinitions: List.unmodifiable(chordDefs),
@@ -119,6 +161,7 @@ ParseResult assemble(
     pendingTocSuppressed = false;
     titlesAlignment = null;
     diagrams = null;
+    recallAutoClosed = null;
     directives = <Directive>[];
     sections = <Section>[];
     chordDefs = <ChordDefinition>[];
@@ -133,15 +176,26 @@ ParseResult assemble(
     // directive arrives. Every directive is still appended to the
     // directive stream so that `Song.directives` is lossless.
     final pending = skipUntilEnd;
-    if (pending != null) {
+    // A song boundary is structural and is never conditional, so it ends
+    // the suppression rather than being swallowed by it. Falling through
+    // (instead of `continue`) hands the directive to the `{new_song}`
+    // branch below, and `finishSong()` reports the unterminated section.
+    final isSongBoundary = directive != null &&
+        (directive.name == 'new_song' || directive.name == 'ns');
+    if (pending != null && !isSongBoundary) {
       if (directive != null) {
         directives.add(directive);
-        final endKind = _endKindOf(directive.name);
-        if (endKind != null &&
-            endKind.kind == pending.kind &&
-            (endKind.kind != SectionKind.custom ||
-                endKind.customKind == pending.customKind)) {
-          skipUntilEnd = null;
+        if (_sameSection(_startKindOf(directive.name), pending)) {
+          // Nested section of the same kind: it must be closed before the
+          // suppressed one is.
+          skipDepth++;
+        } else if (_sameSection(_endKindOf(directive.name), pending)) {
+          if (skipDepth > 0) {
+            skipDepth--;
+          } else {
+            skipUntilEnd = null;
+            skipStartSpan = null;
+          }
         }
       }
       continue;
@@ -189,6 +243,8 @@ ParseResult assemble(
         final startKind = _startKindOf(directive.name);
         if (startKind != null) {
           skipUntilEnd = startKind;
+          skipStartSpan = directive.span;
+          skipDepth = 0;
         }
         // Non-section directives are simply suppressed; metadata and
         // formatting reducers already filter selector-tagged directives
@@ -207,6 +263,7 @@ ParseResult assemble(
             diagnostics.add(
               Diagnostic(
                 severity: DiagnosticSeverity.warning,
+                code: DiagnosticCode.malformedChordDefinition,
                 message: 'Malformed {${directive.name}} body.',
                 span: directive.span,
               ),
@@ -220,6 +277,24 @@ ParseResult assemble(
       // forms `{chorus: Final}` / `{chorus: label="Final"}` per
       // ChordPro 6.060 (Song.pm:1755).
       if (directive.name == 'chorus') {
+        // A recall is a section of its own, so an open section has to be
+        // closed first — otherwise the recall would be appended to
+        // `sections` ahead of the section it appeared inside.
+        if (open != null && open!.kind != SectionKind.loose) {
+          diagnostics.add(
+            Diagnostic(
+              severity: DiagnosticSeverity.warning,
+              code: DiagnosticCode.chorusRecallInsideSection,
+              message: '{chorus} recall inside an open ${open!.kind.name} '
+                  'section; auto-closing before the recall.',
+              span: directive.span,
+            ),
+          );
+          recallAutoClosed = _StartKind(open!.kind, open!.customKind);
+          final s = open!.finish();
+          if (s != null) sections.add(s);
+          open = null;
+        }
         closeLoose();
         final attrs = parseKv(directive.value ?? '', defaultKey: 'label');
         final label = attrs.remove('label');
@@ -242,6 +317,7 @@ ParseResult assemble(
           diagnostics.add(
             Diagnostic(
               severity: DiagnosticSeverity.warning,
+              code: DiagnosticCode.nestedSection,
               message: 'Nested or unclosed ${open!.kind.name} section; '
                   'auto-closing before ${directive.name}.',
               span: directive.span,
@@ -262,6 +338,7 @@ ParseResult assemble(
             startKind.kind == SectionKind.grid ? 'shape' : 'label';
         final attrs = parseKv(directive.value ?? '', defaultKey: defaultKey);
         final label = attrs.remove('label');
+        recallAutoClosed = null;
         open = _OpenSection(
           kind: startKind.kind,
           customKind: startKind.customKind,
@@ -269,6 +346,7 @@ ParseResult assemble(
           attributes: Map<String, String>.unmodifiable(attrs),
           startSpan: directive.span,
           notesMode: notesMode,
+          altBrackets: brackets,
         );
         continue;
       }
@@ -280,6 +358,7 @@ ParseResult assemble(
           kind: SectionKind.loose,
           startSpan: directive.span,
           notesMode: notesMode,
+          altBrackets: brackets,
         );
         open!.addCommentLine(
           text: value,
@@ -295,6 +374,7 @@ ParseResult assemble(
           kind: SectionKind.loose,
           startSpan: directive.span,
           notesMode: notesMode,
+          altBrackets: brackets,
         );
         open!.addLayoutBreak(kind: layoutBreak, span: directive.span);
         continue;
@@ -306,6 +386,7 @@ ParseResult assemble(
           diagnostics.add(
             Diagnostic(
               severity: DiagnosticSeverity.warning,
+              code: DiagnosticCode.emptyImage,
               message: 'Empty {image} directive.',
               span: directive.span,
             ),
@@ -317,6 +398,7 @@ ParseResult assemble(
           diagnostics.add(
             Diagnostic(
               severity: DiagnosticSeverity.warning,
+              code: DiagnosticCode.malformedImage,
               message: 'Malformed {image} directive.',
               span: directive.span,
             ),
@@ -327,6 +409,7 @@ ParseResult assemble(
           kind: SectionKind.loose,
           startSpan: directive.span,
           notesMode: notesMode,
+          altBrackets: brackets,
         );
         open!.addImageLine(image: image, span: directive.span);
         continue;
@@ -334,10 +417,16 @@ ParseResult assemble(
 
       final endKind = _endKindOf(directive.name);
       if (endKind != null) {
+        final autoClosed = recallAutoClosed;
+        if (autoClosed != null && _sameSection(endKind, autoClosed)) {
+          recallAutoClosed = null;
+          continue;
+        }
         if (open == null || open!.kind == SectionKind.loose) {
           diagnostics.add(
             Diagnostic(
               severity: DiagnosticSeverity.warning,
+              code: DiagnosticCode.strayEnd,
               message: 'Stray ${directive.name} without matching start.',
               span: directive.span,
             ),
@@ -350,6 +439,7 @@ ParseResult assemble(
           diagnostics.add(
             Diagnostic(
               severity: DiagnosticSeverity.warning,
+              code: DiagnosticCode.mismatchedEnd,
               message: 'Mismatched end: expected end of ${open!.kind.name}, '
                   'got ${directive.name}.',
               span: directive.span,
@@ -376,6 +466,7 @@ ParseResult assemble(
         kind: SectionKind.loose,
         startSpan: line.span,
         notesMode: notesMode,
+        altBrackets: brackets,
       );
     }
     open!.addLine(line);
@@ -390,6 +481,35 @@ class _StartKind {
   _StartKind(this.kind, [this.customKind]);
   final SectionKind kind;
   final String? customKind;
+}
+
+/// Whether [candidate] names the same section as [target], taking the
+/// custom-environment name into account.
+bool _sameSection(_StartKind? candidate, _StartKind target) =>
+    candidate != null &&
+    candidate.kind == target.kind &&
+    (candidate.kind != SectionKind.custom ||
+        candidate.customKind == target.customKind);
+
+/// The validated alternate chord bracket pair (`parser.altbrackets`).
+class _AltBrackets {
+  const _AltBrackets(this.open, this.close);
+
+  /// Returns `null` when no pair was configured.
+  static _AltBrackets? from(String? pair) {
+    if (pair == null) return null;
+    final runes = pair.runes.toList(growable: false);
+    return _AltBrackets(
+      String.fromCharCode(runes[0]),
+      String.fromCharCode(runes[1]),
+    );
+  }
+
+  final String open;
+  final String close;
+
+  String apply(String text) =>
+      text.replaceAll(open, '[').replaceAll(close, ']');
 }
 
 _StartKind? _startKindOf(String name) {
@@ -469,11 +589,10 @@ bool _selectorApplies(Directive d, Set<String> active) {
   final sel = d.selector;
   if (sel == null) return true;
   final isActive = active.contains(sel);
-  return switch (d.polarity) {
-    Polarity.positive => isActive,
-    Polarity.negative => !isActive,
-    Polarity.none => true,
-  };
+  // A selector is only ever recorded together with a positive or negative
+  // polarity (see `_parseInner` in directive_parser.dart), so there is no
+  // `Polarity.none` case to handle here.
+  return d.polarity == Polarity.negative ? !isActive : isActive;
 }
 
 _StartKind? _endKindOf(String name) {
@@ -518,6 +637,7 @@ class _OpenSection {
     this.label,
     this.attributes = const {},
     this.notesMode = false,
+    this.altBrackets,
   });
 
   final SectionKind kind;
@@ -526,6 +646,7 @@ class _OpenSection {
   final Map<String, String> attributes;
   final SourceSpan startSpan;
   final bool notesMode;
+  final _AltBrackets? altBrackets;
   final List<Line> _lines = [];
 
   bool get isVerbatim =>
@@ -539,11 +660,17 @@ class _OpenSection {
 
   void addLine(RawLine line) {
     if (isVerbatim) {
+      // Verbatim bodies are handed to a delegate untouched, so the
+      // alternate bracket pair is deliberately *not* rewritten here.
       _lines.add(Line.verbatim(verbatim: line.text, span: line.span));
     } else {
+      final brackets = altBrackets;
+      final source = brackets == null
+          ? line
+          : RawLine(number: line.number, text: brackets.apply(line.text));
       _lines.add(
         Line(
-          tokens: tokenizeInline(line, notesMode: notesMode),
+          tokens: tokenizeInline(source, notesMode: notesMode),
           span: line.span,
         ),
       );
@@ -594,6 +721,12 @@ class _OpenSection {
 
 /// Expands `{meta: key value}` directives into synthetic `{key: value}`
 /// directives so [reduceMetadata] does not need to know about `meta`.
+///
+/// Only the metadata reduction sees the expansion: per the reference
+/// implementation `{meta}` declares *metadata* items, so
+/// `{meta: textfont Times}` is metadata named `textfont`, not a
+/// `{textfont}` formatting directive, and [reduceFormatting] is
+/// deliberately given the unexpanded stream.
 Iterable<Directive> _expandMeta(
   Iterable<Directive> directives,
   List<Diagnostic> diagnostics,
@@ -608,6 +741,7 @@ Iterable<Directive> _expandMeta(
       diagnostics.add(
         Diagnostic(
           severity: DiagnosticSeverity.warning,
+          code: DiagnosticCode.emptyMeta,
           message: 'Empty {meta} directive.',
           span: d.span,
         ),
@@ -624,16 +758,9 @@ Iterable<Directive> _expandMeta(
       key = value.substring(0, space);
       body = value.substring(space + 1).trimLeft();
     }
-    if (key.isEmpty) {
-      diagnostics.add(
-        Diagnostic(
-          severity: DiagnosticSeverity.warning,
-          message: 'Malformed {meta} directive.',
-          span: d.span,
-        ),
-      );
-      continue;
-    }
+    // `value` is trimmed and non-empty here, so the key is never empty:
+    // `_firstWhitespace` can only return -1 (no whitespace at all) or an
+    // index past the first character.
     yield Directive(
       name: key.toLowerCase(),
       selector: d.selector,

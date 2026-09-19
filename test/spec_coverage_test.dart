@@ -19,6 +19,16 @@
 /// Scope: directive names, metadata names, formatting directive names and
 /// chord-quality tokens. Attribute names (`label=`, `shape=`, `anchor=`,
 /// …) form a separate ledger and are deliberately out of scope here.
+///
+/// The second group runs the *checklist → audit* direction: a ticked
+/// checklist item claims a test asserts it (see §17 of the checklist), so
+/// every subsection holding ticked spec obligations must be named by at
+/// least one `[§…]` coordinate in `spec_audit_test.dart`. It is
+/// subsection-granular rather than per item — the audit file routinely
+/// covers several items in one test — but it catches a whole block of
+/// ticks shipping with nothing behind it, which is how the `{start_of_grid}`
+/// body-token vocabulary came to be ticked while grid bodies were in fact
+/// captured verbatim.
 library;
 
 import 'dart:io';
@@ -31,6 +41,7 @@ const _assemblerPath = 'lib/src/assembler/assembler.dart';
 const _metadataPath = 'lib/src/ast/metadata.dart';
 const _formattingPath = 'lib/src/ast/formatting.dart';
 const _chordPath = 'lib/src/chord/chord.dart';
+const _auditPath = 'test/spec_audit_test.dart';
 
 /// Names deliberately absent from both ledgers.
 ///
@@ -60,6 +71,29 @@ void main() {
     });
   });
 
+  group('§coverage checklist → audit', () {
+    test('every ticked checklist subsection has an audit test', () {
+      final ids = _auditCoordinates();
+      final uncovered = <String>[];
+      _tickedSubsections().forEach((section, items) {
+        if (items == 0) return;
+        if (ids.any((id) => _coordinateNames(id, section))) return;
+        uncovered.add('§$section ($items ticked)');
+      });
+      expect(
+        uncovered,
+        isEmpty,
+        reason: 'These $_checklistPath subsections tick spec obligations '
+            'that no test in $_auditPath claims:\n'
+            '  ${uncovered.join('\n  ')}\n'
+            'Either add a test whose name carries the coordinate '
+            '(e.g. "[§6.4a] …"), or untick the items until one exists. '
+            'Items the checklist marks as non-spec or README extensions '
+            'are exempt — the audit file asserts the spec only.',
+      );
+    });
+  });
+
   group('§coverage extraction backstop', () {
     // Guards against a silent vacuous pass: if a helper is renamed or the
     // source syntax shifts so a regex stops matching, the tests above
@@ -67,6 +101,8 @@ void main() {
     // real counts so ordinary additions never trip them.
     test('ledger and source extraction return plausible counts', () {
       expect(documented.length, greaterThan(200), reason: 'ledger tokens');
+      expect(_auditCoordinates().length, greaterThan(150), reason: 'audit ids');
+      expect(_tickedSubsections().length, greaterThan(30), reason: 'sections');
       expect(_assemblerNames().length, greaterThan(30), reason: 'assembler');
       expect(_metadataNames().length, greaterThan(30), reason: 'metadata');
       expect(_formattingNames().length, greaterThan(20), reason: 'formatting');
@@ -234,3 +270,55 @@ Set<String> _constMembers(String src, String name) {
 }
 
 String _read(String path) => File(path).readAsStringSync();
+
+// ---------------------------------------------------------------------
+// Checklist → audit direction
+// ---------------------------------------------------------------------
+
+final _auditId = RegExp(r'\[§([^\]\s]+)');
+final _sectionHeading = RegExp(r'^#{2,3}\s+(\d+(?:\.\d+)?)[\s.]');
+final _tickedItem = RegExp(r'^\s*(?:-|\|)\s*\[x\]');
+
+/// Every `[§…]` coordinate claimed by a test name in the audit file.
+Set<String> _auditCoordinates() => _auditId
+    .allMatches(File(_auditPath).readAsStringSync())
+    .map((m) => m.group(1)!)
+    .toSet();
+
+/// Checklist subsection number to the number of ticked **spec**
+/// obligations it holds.
+///
+/// Items the checklist itself flags as non-spec (a README extension, or
+/// "spec is silent") are not counted: `spec_audit_test.dart` asserts the
+/// spec only, by its own stated convention, so those items legitimately
+/// have no audit test.
+Map<String, int> _tickedSubsections() {
+  final counts = <String, int>{};
+  String? section;
+  for (final line in File(_checklistPath).readAsLinesSync()) {
+    final heading = _sectionHeading.firstMatch(line);
+    if (heading != null) {
+      section = heading.group(1);
+      counts.putIfAbsent(section!, () => 0);
+      continue;
+    }
+    if (section == null || !_tickedItem.hasMatch(line)) continue;
+    final lower = line.toLowerCase();
+    final nonSpec = lower.contains('readme') ||
+        lower.contains('spec is silent') ||
+        lower.contains('non-spec');
+    if (!nonSpec) counts[section] = counts[section]! + 1;
+  }
+  return counts;
+}
+
+/// Whether an audit coordinate names [section].
+///
+/// `6.4` is named by `6.4`, `6.4a` and `6.4-cc.named`, but not by `6.40`.
+bool _coordinateNames(String id, String section) {
+  if (!id.startsWith(section)) return false;
+  if (id.length == section.length) return true;
+  return !_isDigit(id.codeUnitAt(section.length));
+}
+
+bool _isDigit(int c) => c >= 0x30 && c <= 0x39;

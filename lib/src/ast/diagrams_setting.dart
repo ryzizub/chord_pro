@@ -79,4 +79,14 @@ class DiagramsSetting {
   /// Where to render diagrams. `null` when the directive only flipped
   /// the on/off flag without specifying a position.
   final DiagramsPosition? position;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DiagramsSetting &&
+          other.enabled == enabled &&
+          other.position == position;
+
+  @override
+  int get hashCode => Object.hash(enabled, position);
 }

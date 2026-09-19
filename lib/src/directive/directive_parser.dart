@@ -12,6 +12,16 @@ class DirectiveMatch {
 
   /// Index one past the closing `}` in the source line.
   final int end;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DirectiveMatch &&
+          other.directive == directive &&
+          other.end == end;
+
+  @override
+  int get hashCode => Object.hash(directive, end);
 }
 
 /// Parses the single directive that must span the whole [line].

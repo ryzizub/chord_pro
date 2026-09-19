@@ -8,6 +8,7 @@ import 'package:chord_pro/src/chord/chord.dart';
 import 'package:chord_pro/src/chord/chord_definition.dart';
 import 'package:chord_pro/src/directive/directive.dart';
 import 'package:chord_pro/src/inline/inline_token.dart';
+import 'package:chord_pro/src/util/equality.dart';
 
 /// A parsed ChordPro song.
 class Song {
@@ -73,12 +74,17 @@ class Song {
   /// ChordPro 6.100 configuration option), roots that would produce a key
   /// signature with more than 5 accidentals are substituted with their
   /// enharmonic equivalents: `C#`→`Db`, `D#`→`Eb`, `G#`→`Ab`, `A#`→`Bb`.
+  ///
+  /// Every letter chord is respelled according to [accidentals], so this
+  /// is a normalisation pass as well as a transposition: `transposed(0,
+  /// accidentals: AccidentalPreference.flats)` respells the song in flats
+  /// without changing its pitch, and `transposed(12)` respells at the
+  /// same pitch class.
   Song transposed(
     int semitones, {
     AccidentalPreference accidentals = AccidentalPreference.sharps,
     bool forceCommonKeys = false,
   }) {
-    if (semitones % 12 == 0) return this;
     final newSections = sections
         .map(
           (s) => Section(
@@ -86,17 +92,18 @@ class Song {
             label: s.label,
             customKind: s.customKind,
             isChorusRecall: s.isChorusRecall,
+            attributes: s.attributes,
             span: s.span,
-            lines: s.lines
-                .map(
-                  (line) => _transposeLine(
-                    line,
-                    semitones,
-                    accidentals,
-                    forceCommonKeys: forceCommonKeys,
-                  ),
-                )
-                .toList(growable: false),
+            lines: List.unmodifiable(
+              s.lines.map(
+                (line) => _transposeLine(
+                  line,
+                  semitones,
+                  accidentals,
+                  forceCommonKeys: forceCommonKeys,
+                ),
+              ),
+            ),
           ),
         )
         .toList(growable: false);
@@ -139,7 +146,7 @@ class Song {
         other: metadata.other,
       ),
       directives: directives,
-      sections: newSections,
+      sections: List.unmodifiable(newSections),
       chordDefinitions: chordDefinitions,
       formatting: formatting,
       tocSuppressed: tocSuppressed,
@@ -147,6 +154,31 @@ class Song {
       diagrams: diagrams,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Song &&
+          other.metadata == metadata &&
+          listEquals(other.sections, sections) &&
+          listEquals(other.chordDefinitions, chordDefinitions) &&
+          listEquals(other.directives, directives) &&
+          other.formatting == formatting &&
+          other.tocSuppressed == tocSuppressed &&
+          other.titlesAlignment == titlesAlignment &&
+          other.diagrams == diagrams;
+
+  @override
+  int get hashCode => Object.hash(
+        metadata,
+        Object.hashAll(sections),
+        Object.hashAll(chordDefinitions),
+        Object.hashAll(directives),
+        formatting,
+        tocSuppressed,
+        titlesAlignment,
+        diagrams,
+      );
 }
 
 /// Transposes a metadata key spelling.
@@ -195,5 +227,5 @@ Line _transposeLine(
       newTokens.add(token);
     }
   }
-  return Line(tokens: newTokens, span: line.span);
+  return Line(tokens: List.unmodifiable(newTokens), span: line.span);
 }

@@ -66,6 +66,21 @@ class Directive {
   bool get isCustomExtension => name.startsWith('x_');
 
   @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Directive &&
+          other.name == name &&
+          other.selector == selector &&
+          other.polarity == polarity &&
+          other.value == value &&
+          other.span == span &&
+          other.fromMeta == fromMeta;
+
+  @override
+  int get hashCode =>
+      Object.hash(name, selector, polarity, value, span, fromMeta);
+
+  @override
   String toString() {
     final sel = selector == null
         ? ''

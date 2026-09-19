@@ -364,17 +364,21 @@ Attributes:
   - [x] `cc="Name:C1 C2 …"` — combined name + predefined chord progression.
   - [x] In lyric / grid bodies the bracket token `[^]` is emitted as a `ChordRecallToken` in the inline token stream. (chordchanges, since 6.070) **Advancing the cc-set cursor is a rendering concern — `ChordRecallToken` is the signal to do so.**
 
-Grid body tokens (whitespace-separated):
+Grid body tokens (whitespace-separated). **Not surfaced:** grid bodies are
+captured verbatim (`Line.kind == LineKind.verbatim`), so none of these reach
+the caller as tokens and `Song.transposed` leaves grid chords at their
+original pitch. Recorded in `doc/reference/limitations.md`; the audit test
+`[§6.4-grid.tokens]` is skipped with that reason.
 
-- [x] Chord symbols.
-- [x] `.` empty cell.
-- [x] `/` "play chord here" placeholder.
-- [x] `~` separator for multiple chords in one cell.
-- [x] Bar symbols: `|`, `||`, `|.`, `|:`, `:|`, `:|:`.
-- [x] Volta markers: `|1`, `|2`, `:|1`, `:|2`, `:|2>`.
-- [x] Repeat shorthand: `%` (repeat last measure), `%%` (repeat last two measures).
-- [x] Strum-line indicator after first bar: `S` (show bars/lines), `s` (omit). (since 6.080)
-- [x] Strum pseudo-chords: up `u`, `up`, `u+`, `ua`, `ua+`, `ux`, `ux+`, `us`, `us+`; down `d`, `dn`, `d+`, `da`, `da+`, `dx`, `dx+`, `ds`, `ds+`; muted `x`. (since 6.080)
+- [ ] Chord symbols.
+- [ ] `.` empty cell.
+- [ ] `/` "play chord here" placeholder.
+- [ ] `~` separator for multiple chords in one cell.
+- [ ] Bar symbols: `|`, `||`, `|.`, `|:`, `:|`, `:|:`.
+- [ ] Volta markers: `|1`, `|2`, `:|1`, `:|2`, `:|2>`.
+- [ ] Repeat shorthand: `%` (repeat last measure), `%%` (repeat last two measures).
+- [ ] Strum-line indicator after first bar: `S` (show bars/lines), `s` (omit). (since 6.080)
+- [ ] Strum pseudo-chords: up `u`, `up`, `u+`, `ua`, `ua+`, `ux`, `ux+`, `us`, `us+`; down `d`, `dn`, `d+`, `da`, `da+`, `dx`, `dx+`, `ds`, `ds+`; muted `x`. (since 6.080)
 
 ### 6.5 Delegated environments (directives-delegates)
 

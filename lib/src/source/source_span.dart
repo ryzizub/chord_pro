@@ -21,5 +21,16 @@ class SourceSpan {
   final int length;
 
   @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SourceSpan &&
+          other.line == line &&
+          other.column == column &&
+          other.length == length;
+
+  @override
+  int get hashCode => Object.hash(line, column, length);
+
+  @override
   String toString() => '$line:$column+$length';
 }

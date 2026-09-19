@@ -2,6 +2,7 @@ import 'package:chord_pro/src/ast/grid_attributes.dart';
 import 'package:chord_pro/src/ast/line.dart';
 import 'package:chord_pro/src/ast/textblock_attributes.dart';
 import 'package:chord_pro/src/source/source_span.dart';
+import 'package:chord_pro/src/util/equality.dart';
 
 /// What kind of block a [Section] represents.
 enum SectionKind {
@@ -73,7 +74,12 @@ class Section {
   /// Lines inside the section, in source order.
   final List<Line> lines;
 
-  /// Span covering the whole section, start-directive to end-directive.
+  /// Span covering the section, from its start directive.
+  ///
+  /// [SourceSpan] never crosses a line boundary, so this covers the whole
+  /// section only when it opens and closes on the same line. For the
+  /// usual multi-line section it points at the start directive; use
+  /// `lines.last.span` for where the body ends.
   final SourceSpan span;
 
   /// True when this section is a bare `{chorus}` recall rather than an
@@ -90,13 +96,42 @@ class Section {
 
   /// Typed grid attributes (shape, cc), only populated when
   /// [kind] is [SectionKind.grid].
+  ///
+  /// Decoded on each access (the shape is re-matched and a new
+  /// [GridAttributes] allocated), so hoist it out of a render loop
+  /// rather than reading it per line.
   GridAttributes? get gridAttributes => kind == SectionKind.grid
       ? GridAttributes.fromAttributes(attributes, label: label)
       : null;
 
   /// Typed textblock attributes, only populated when
   /// [kind] is [SectionKind.textblock].
+  ///
+  /// Decoded on each access, like [gridAttributes].
   TextblockAttributes? get textblockAttributes => kind == SectionKind.textblock
       ? TextblockAttributes.fromAttributes(attributes)
       : null;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Section &&
+          other.kind == kind &&
+          other.label == label &&
+          other.customKind == customKind &&
+          listEquals(other.lines, lines) &&
+          other.span == span &&
+          other.isChorusRecall == isChorusRecall &&
+          mapEquals(other.attributes, attributes);
+
+  @override
+  int get hashCode => Object.hash(
+        kind,
+        label,
+        customKind,
+        Object.hashAll(lines),
+        span,
+        isChorusRecall,
+        mapHash(attributes),
+      );
 }
