@@ -21,7 +21,8 @@ export 'src/chord/chord.dart'
 export 'src/chord/chord_definition.dart'
     show ChordDefinition, parseChordDefinition;
 export 'src/chord_pro.dart' show ChordPro, Preprocessor;
-export 'src/diagnostic/diagnostic.dart' show Diagnostic, DiagnosticSeverity;
+export 'src/diagnostic/diagnostic.dart'
+    show Diagnostic, DiagnosticCode, DiagnosticSeverity;
 export 'src/diagnostic/parse_result.dart' show ParseResult;
 export 'src/directive/directive.dart' show Directive, Polarity;
 export 'src/directive/directive_parser.dart'

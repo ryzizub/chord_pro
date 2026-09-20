@@ -1,4 +1,5 @@
 import 'package:chord_pro/src/source/source_span.dart';
+import 'package:chord_pro/src/util/equality.dart';
 
 /// A parsed `{define}` or `{chord}` body.
 ///
@@ -36,6 +37,7 @@ class ChordDefinition {
   final int? baseFret;
 
   /// `frets F+` — fret values, in string order. `null` means muted.
+  /// Unmodifiable.
   ///
   /// Spec regex (`Song.pm:2528`): `^(?:-?[0-9]+|[-xXN])$`. Negative
   /// integers and the literal characters `-`, `x`, `X`, `N` are all
@@ -78,6 +80,41 @@ class ChordDefinition {
 
   /// Span covering the original `{define}` / `{chord}` directive.
   final SourceSpan span;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChordDefinition &&
+          other.name == name &&
+          other.baseFret == baseFret &&
+          listEquals(other.frets, frets) &&
+          listEquals(other.fingers, fingers) &&
+          listEquals(other.keys, keys) &&
+          other.display == display &&
+          other.format == format &&
+          other.copy == copy &&
+          other.copyall == copyall &&
+          other.diagram == diagram &&
+          other.isTransposable == isTransposable &&
+          other.raw == raw &&
+          other.span == span;
+
+  @override
+  int get hashCode => Object.hash(
+        name,
+        baseFret,
+        Object.hashAll(frets),
+        Object.hashAll(fingers),
+        Object.hashAll(keys),
+        display,
+        format,
+        copy,
+        copyall,
+        diagram,
+        isTransposable,
+        raw,
+        span,
+      );
 }
 
 final RegExp _fretRe = RegExp(r'^(?:-?\d+|[-xXN])$');
@@ -100,8 +137,9 @@ const Set<String> _keywords = {
 
 /// Parses a `{define}` / `{chord}` value body.
 ///
-/// Returns `null` when the body is empty or has no name. Unknown
-/// keywords are ignored rather than raising.
+/// Returns `null` when the body is empty or names no chord — `{define: ""}`
+/// and `{define: []}` are malformed, not definitions of a chord called
+/// "". Unknown keywords are ignored rather than raising.
 ChordDefinition? parseChordDefinition(
   String value, {
   required SourceSpan span,
@@ -115,6 +153,7 @@ ChordDefinition? parseChordDefinition(
     name = name.substring(1, name.length - 1);
     isTransposable = true;
   }
+  if (name.trim().isEmpty) return null;
 
   if (isTransposable) {
     // Per spec, bracketed-name definitions cannot carry attributes.
@@ -212,9 +251,9 @@ ChordDefinition? parseChordDefinition(
   return ChordDefinition(
     name: name,
     baseFret: baseFret,
-    frets: frets,
-    fingers: fingers,
-    keys: keys,
+    frets: List.unmodifiable(frets),
+    fingers: List.unmodifiable(fingers),
+    keys: List.unmodifiable(keys),
     display: display,
     format: format,
     copy: copy,

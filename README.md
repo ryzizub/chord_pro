@@ -8,6 +8,8 @@ A Dart parser for the [ChordPro 6 song format](https://www.chordpro.org/chordpro
 
 Built for music apps and digital songbooks — parses `.cho` / `.crd` / `.chopro` files into typed chords, lyrics, metadata, comments, images, layout hints, and chord diagrams.
 
+Zero runtime dependencies. Parsing never throws: problems come back as diagnostics with a stable code and a source span. The whole AST is immutable and compares by value, so parsed songs can be diffed, cached or used as map keys.
+
 ## Installation
 
 ```sh

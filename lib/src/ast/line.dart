@@ -2,6 +2,7 @@ import 'package:chord_pro/src/ast/section.dart';
 import 'package:chord_pro/src/directive/image_directive.dart';
 import 'package:chord_pro/src/inline/inline_token.dart';
 import 'package:chord_pro/src/source/source_span.dart';
+import 'package:chord_pro/src/util/equality.dart';
 
 /// What flavour of content a [Line] carries.
 enum LineKind {
@@ -140,4 +141,29 @@ class Line {
 
   /// Whether this line is a layout break.
   bool get isLayoutBreak => kind == LineKind.layoutBreak;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Line &&
+          other.kind == kind &&
+          listEquals(other.tokens, tokens) &&
+          other.verbatim == verbatim &&
+          other.comment == comment &&
+          other.commentStyle == commentStyle &&
+          other.image == image &&
+          other.layoutBreak == layoutBreak &&
+          other.span == span;
+
+  @override
+  int get hashCode => Object.hash(
+        kind,
+        Object.hashAll(tokens),
+        verbatim,
+        comment,
+        commentStyle,
+        image,
+        layoutBreak,
+        span,
+      );
 }

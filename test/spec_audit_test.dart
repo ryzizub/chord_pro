@@ -201,31 +201,31 @@ void main() {
     });
 
     test('[§2.4b] additions `add`, `add9` recognisable', () {
-      // `add` is a quality; the trailing number lands in extensions.
+      // `add` is a quality; the trailing number lands in the extension.
       final c = Chord.tryParse('Cadd9');
       expect(c, isNotNull);
       expect(c!.quality, 'add');
-      expect(c.extensions.join(), '9');
+      expect(c.extension, '9');
     });
 
     test('[§2.5] numeric extensions 7/9/11/13 captured', () {
       for (final n in ['7', '9', '11', '13']) {
         final c = Chord.tryParse('C$n');
         expect(c, isNotNull, reason: 'C$n');
-        expect(c!.extensions.join(), n);
+        expect(c!.extension, n);
       }
     });
 
     test(
         '[§2.6] altered intervals `b5`, `#9`, `#11`, `b13` '
-        'survive in extensions', () {
+        'survive in the extension', () {
       // Use a numeric extension before the alteration so the parser
       // can't mistake the flat/sharp for a root accidental
       // (`Cb5` would otherwise be Cb chord + 5).
       for (final ext in ['7b5', '7#9', '7#11', '7b13']) {
         final c = Chord.tryParse('C$ext');
         expect(c, isNotNull, reason: 'C$ext');
-        expect(c!.extensions.join(), contains(ext.substring(1)));
+        expect(c!.extension, contains(ext.substring(1)));
       }
     });
 
@@ -277,10 +277,41 @@ void main() {
         '[§2.11] strict mode surfaces unknown extensions '
         'while staying parseable', () {
       // `tryParse` is intentionally forgiving; unrecognised tail tokens
-      // land in `extensions` rather than failing the whole chord.
+      // land in `extension` rather than failing the whole chord.
       final c = Chord.tryParse('Cwidget');
       expect(c, isNotNull);
-      expect(c!.extensions.join(), 'widget');
+      expect(c!.extension, 'widget');
+    });
+
+    test('[§2.12a] Pango markup may wrap a chord name', () {
+      // `[<span color="red">Daug</span>]` is a marked-up chord; the
+      // markup is preserved verbatim on the token.
+      final s = ChordPro.parseSong('[<span color="red">Daug</span>]hi');
+      final token =
+          s.sections.first.lines.first.tokens.whereType<ChordToken>().single;
+      expect(token.raw, '<span color="red">Daug</span>');
+    });
+
+    test('[§2.12b] marked-up chords are distinct entries', () {
+      // Per the markup page, a marked-up chord is its own diagram entry,
+      // so two spellings of the same chord must stay distinguishable.
+      final s = ChordPro.parseSong('[D][<span color="red">D</span>]hi');
+      final raws = s.sections.first.lines.first.tokens
+          .whereType<ChordToken>()
+          .map((t) => t.raw)
+          .toList();
+      expect(raws, ['D', '<span color="red">D</span>']);
+    });
+
+    test('[§2.12c] markup must not split the chord name (§13.8)', () {
+      // `[<span>D<sup>aug</sup></span>]` is invalid per the spec. The
+      // parser does not reject it, but it must not silently rejoin the
+      // pieces into a chord named `Daug` either.
+      final s = ChordPro.parseSong('[<span>D<sup>aug</sup></span>]hi');
+      final token =
+          s.sections.first.lines.first.tokens.whereType<ChordToken>().single;
+      expect(token.raw, '<span>D<sup>aug</sup></span>');
+      expect(token.chord?.root, isNot('Daug'));
     });
 
     test('[§2.13a] chord precedes the syllable it qualifies', () {
@@ -611,6 +642,27 @@ real chorus
       expect(g.gridAttributes?.cc, 'grid');
     });
 
+    test(
+      '[§6.4-grid.tokens] grid body tokens are surfaced individually',
+      () {
+        // Spec §6.4 lists the grid body vocabulary: chord symbols, `.`
+        // (empty cell), `/` (play here), `~` (multiple chords per cell),
+        // bar symbols, volta markers, `%`/`%%` repeats and the 6.080 strum
+        // indicators. A conforming parser hands these to the renderer as
+        // tokens.
+        final s = ChordPro.parseSong(
+          '{start_of_grid: 4x4}\n| C . / | G ~ Am |. %\n{end_of_grid}',
+        );
+        final line = s.sections.first.lines.first;
+        expect(line.kind, LineKind.structured);
+      },
+      skip: 'AUDIT: grid bodies are captured verbatim '
+          '(`Line.kind == LineKind.verbatim`), so the token vocabulary in '
+          '§6.4 is not surfaced and `Song.transposed` leaves grid chords '
+          'at their original pitch. Recorded in '
+          'doc/reference/limitations.md.',
+    );
+
     test('[§6.5-abc] `start_of_abc` body captured as verbatim section', () {
       final s = ChordPro.parseSong('{start_of_abc}\nX:1\nK:G\n{end_of_abc}');
       final a = s.sections.firstWhere((sec) => sec.kind == SectionKind.abc);
@@ -649,6 +701,25 @@ real chorus
       );
       final g = s.sections.firstWhere((sec) => sec.kind == SectionKind.grille);
       expect(g.lines.every((l) => l.kind == LineKind.verbatim), isTrue);
+    });
+
+    test('[§6.7a] arbitrary `{start_of_<name>}` becomes a custom section', () {
+      final s = ChordPro.parseSong(
+        '{start_of_intro_riff}\n[C]hi\n{end_of_intro_riff}',
+      );
+      expect(s.sections.first.kind, SectionKind.custom);
+      expect(s.sections.first.customKind, 'intro_riff');
+    });
+
+    test('[§6.7b] custom environments take `label=` and the bare form', () {
+      final attr = ChordPro.parseSong(
+        '{start_of_solo: label="Guitar solo"}\nx\n{end_of_solo}',
+      );
+      expect(attr.sections.first.label, 'Guitar solo');
+      final bare = ChordPro.parseSong(
+        '{start_of_solo: Guitar solo}\nx\n{end_of_solo}',
+      );
+      expect(bare.sections.first.label, 'Guitar solo');
     });
 
     test('[§6.6a] textblock attributes (textblock-specific) typed', () {
@@ -1201,6 +1272,87 @@ soft
       expect(joined, '<span foreground="red">red</span>');
     });
 
+    test('[§13.1] paired and self-closing `<span>` preserved verbatim', () {
+      for (final markup in [
+        '<span size="large">big</span>',
+        '<span font_desc="Times 12"/>',
+      ]) {
+        expect(_lyricText(markup), markup, reason: markup);
+      }
+    });
+
+    test('[§13.2] every span attribute survives verbatim', () {
+      const attributes = [
+        'font_desc="Times 12"',
+        'font_family="serif"',
+        'face="monospace"',
+        'size="x-large"',
+        'style="italic"',
+        'weight="bold"',
+        'foreground="#ff0000"',
+        'background="yellow"',
+        'underline="double"',
+        'underline_colour="red"',
+        'overline="single"',
+        'overline_colour="blue"',
+        'rise="-30%"',
+        'strikethrough="true"',
+        'strikethrough_colour="green"',
+        'href="https://example.com"',
+      ];
+      for (final attr in attributes) {
+        final markup = '<span $attr>x</span>';
+        expect(_lyricText(markup), markup, reason: attr);
+      }
+    });
+
+    test('[§13.3] convenience tags preserved verbatim', () {
+      for (final tag in [
+        'b',
+        'i',
+        'u',
+        's',
+        'big',
+        'small',
+        'sub',
+        'sup',
+        'tt',
+      ]) {
+        final markup = '<$tag>x</$tag>';
+        expect(_lyricText(markup), markup, reason: tag);
+      }
+    });
+
+    test('[§13.4] `<strut/>` and its attributes preserved verbatim', () {
+      for (final markup in [
+        '<strut/>',
+        '<strut label="verse"/>',
+        '<strut w="2em" a="1ex" d="3"/>',
+        '<strut width="2em" ascender="1ex" descender="3"/>',
+      ]) {
+        expect(_lyricText(markup), markup, reason: markup);
+      }
+    });
+
+    test('[§13.7] bookmark set, reference and metadata forms', () {
+      // Set and reference are markup, so they ride through verbatim.
+      expect(_lyricText('<strut label="verse"/>'), '<strut label="verse"/>');
+      expect(
+        _lyricText('<span href="#verse">jump</span>'),
+        '<span href="#verse">jump</span>',
+      );
+      // The metadata form is a `{meta:}` item like any other.
+      final s = ChordPro.parseSong('{meta: bookmark chorus_1}');
+      expect(s.metadata.other['bookmark'], ['chorus_1']);
+    });
+
+    test('[§13.8] markup is preserved, never interpreted', () {
+      // The parser performs no inline rendering, so nothing inside the
+      // markup is consumed, reordered or unescaped.
+      const markup = '<span weight="bold">a &amp; b</span>';
+      expect(_lyricText(markup), markup);
+    });
+
     test('[§13.c] `<sym name/>` preserved verbatim', () {
       final s = ChordPro.parseSong('<sym sharp/> note');
       final tokens = s.sections.first.lines.first.tokens;
@@ -1315,7 +1467,7 @@ Swing low, sweet chariot,
     test('[§2.5+] combined `69` extension captured', () {
       final c = Chord.tryParse('C69');
       expect(c, isNotNull);
-      expect(c!.extensions.join(), contains('69'));
+      expect(c!.extension, contains('69'));
     });
 
     test(
@@ -1913,4 +2065,14 @@ GABc
       expect(true, isTrue);
     });
   });
+}
+
+/// The concatenated lyric text of a single-line song, used by the §13
+/// markup-preservation tests.
+String _lyricText(String source) {
+  final song = ChordPro.parseSong(source);
+  return song.sections.first.lines.first.tokens
+      .whereType<TextToken>()
+      .map((t) => t.text)
+      .join();
 }

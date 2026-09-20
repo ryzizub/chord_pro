@@ -1,3 +1,110 @@
+## 0.7.0
+
+Correctness and API release from a full package review. Three parser bugs
+fixed, value equality added across the AST, diagnostics given stable codes,
+and the spec audit taught to check its own forward direction.
+
+### Breaking
+
+* `Diagnostic` now requires a `code`, a `DiagnosticCode` naming the condition
+  it reports. Switch on `code` instead of matching `message`, which is prose
+  and may be reworded in any release. Code that constructs a `Diagnostic`
+  must pass one; code that only reads them is unaffected.
+* `Chord.extensions` (a `List<String>` that never held more than one element)
+  is now `Chord.extension`, a `String?` holding everything after the quality
+  verbatim. Replace `chord.extensions.join()` with `chord.extension ?? ''`.
+  The ChordPro spec defines no grammar for what follows the quality, so the
+  remainder was never actually split.
+  Spec: <https://www.chordpro.org/chordpro/chordpro-chords/>
+* `Song.transposed` no longer returns `this` when the shift is a whole number
+  of octaves. It normalises chord spelling to the requested `accidentals` as
+  well as the pitch, so `transposed(0, accidentals: AccidentalPreference.flats)`
+  now respells a song in flats instead of doing nothing. Callers that relied
+  on `transposed(0)` being an identity should skip the call instead.
+* `Chord.tryParse('b7')` and its siblings `b1`–`b7` now report
+  `ChordSystem.nashville` rather than `ChordSystem.letter`. See **Fixed**.
+
+### New
+
+* Every public type in the AST implements `==` and `hashCode` structurally:
+  `Song`, `Metadata`, `Section`, `Line`, all five `InlineToken` subtypes,
+  `Chord`, `ChordDefinition`, `Directive`, `ImageDirective`, `GridAttributes`,
+  `TextblockAttributes`, `DiagramsSetting`, `FormattingProps`,
+  `FormattingSettings`, `Diagnostic`, `ParseResult`, `SourceSpan` and
+  `RawLine`. Parsed songs can now be compared in tests, deduped, cached or
+  used as map keys. The package still has zero runtime dependencies.
+* `DiagnosticCode` — a stable identifier on every diagnostic, exported from
+  the barrel.
+* Numeric metadata directives given a non-number (`{capo: high}`,
+  `{year: MCMXCIX}`, `{tempo: fast}`, `{columns: many}`, `{transpose: up}`)
+  now produce a `DiagnosticCode.invalidNumericValue` warning instead of being
+  dropped in silence.
+* An unterminated selector-suppressed section is reported as
+  `DiagnosticCode.unterminatedSuppressedSection`, matching the warning an
+  unterminated ordinary section already produced.
+
+### Fixed
+
+* `Song.transposed` dropped `Section.attributes`, so transposing a song lost
+  its grid geometry and every textblock attribute — `{start_of_grid: 4x4}`
+  came back with no shape at all. The attributes are now carried over.
+  Spec: <https://www.chordpro.org/chordpro/directives-env_grid/>
+* A selector-suppressed section with no matching end directive swallowed the
+  rest of the document, `{new_song}` included: two songs collapsed into one
+  with no sections and both titles merged. Song boundaries are structural and
+  are never conditional, so they now end the suppression. Nesting is tracked
+  too, so a same-kind section inside a suppressed one no longer ends the
+  suppression early and leaks its lines.
+  Spec: <https://www.chordpro.org/chordpro/chordpro-directives/>
+* Flat Nashville roots (`b1`–`b7`) were reported as `ChordSystem.letter`,
+  because the notation system was re-derived from the root text, where a
+  leading `b` is ambiguous between a flat and a notes-mode lowercase root.
+  The system now comes from the branch that matched the root.
+  Spec: <https://www.chordpro.org/chordpro/chordpro-chords/>
+* `Line.tokens`, `ChordDefinition.frets` / `fingers` / `keys` and the chord
+  extension list were handed out as mutable lists, so a caller could rewrite
+  a parsed song in place. Every collection the parser produces is now
+  unmodifiable, including the ones rebuilt by `Song.transposed`.
+* A single-hex-digit brace escape on a line of its own (`\u{7}`) was left
+  unresolved by a minimum-length guard, and the inline tokenizer then ate the
+  backslash and read `{7}` as a directive. The guard is gone; lines with no
+  backslash take a fast path instead, which is also cheaper than the three
+  rewriting passes it replaces.
+  Spec: <https://www.chordpro.org/chordpro/chordpro-introduction/>
+* `altBrackets` was a whole-document string replacement, so the configured
+  pair was rewritten inside directive values and verbatim bodies too — a song
+  using `«»` as quotation marks in its `{title}` came back with brackets. The
+  rewrite now applies to lyric lines only.
+  Spec: <https://www.chordpro.org/chordpro/chordpro-configuration-generic/>
+* A `{chorus}` recall inside an open section was appended to `Song.sections`
+  *before* the section it appeared inside, losing source order. The open
+  section is now closed first (reported as
+  `DiagnosticCode.chorusRecallInsideSection`) and its own end directive is
+  consumed quietly rather than reported as a stray end.
+  Spec: <https://www.chordpro.org/chordpro/directives-chorus/>
+* `settings.strict` scanned the raw directive stream, so `{meta: key D}`
+  satisfied `Metadata.keys` yet still warned that no key was declared. It now
+  reads the reduced metadata, and the warning's span points at the song that
+  is missing the key instead of always at line 1.
+* `{define: ""}` produced a chord definition named `""`, and `{image: ""}`
+  produced nothing at all — in both cases silently, because the "malformed"
+  diagnostic for each was unreachable. Both are now reported.
+
+### Internal
+
+* `test/spec_coverage_test.dart` gained the *checklist → audit* direction:
+  every checklist subsection holding ticked spec obligations must be named by
+  an `[§…]` coordinate in `test/spec_audit_test.dart`. Backfilled the
+  subsections it found bare (§2.12, §6.7, §13.1–§13.4, §13.7, §13.8).
+* The `{start_of_grid}` body-token vocabulary is unticked in
+  `chordpro-spec-checklist.md` and recorded in `doc/reference/limitations.md`:
+  grid bodies are captured verbatim, so those tokens were never surfaced.
+* Added `test/fuzz_test.dart`, a seeded property test asserting that parsing
+  is total — random input never throws and always yields at least one song —
+  across the plain, option-laden and transposing paths.
+
+---
+
 ## 0.6.3
 
 Maintenance release: documents the `{colb}` shorthand, adds a

@@ -35,4 +35,15 @@ class RawLine {
     }
     return false;
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RawLine && other.number == number && other.text == text;
+
+  @override
+  int get hashCode => Object.hash(number, text);
+
+  @override
+  String toString() => 'RawLine($number, $text)';
 }

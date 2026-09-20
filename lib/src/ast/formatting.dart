@@ -1,4 +1,5 @@
 import 'package:chord_pro/src/directive/directive.dart';
+import 'package:chord_pro/src/util/equality.dart';
 
 /// Per-target font/size/colour overrides parsed from `{chordfont}` and
 /// friends.
@@ -26,6 +27,17 @@ class FormattingProps {
 
   FormattingProps _withColour(String? value) =>
       FormattingProps(font: font, size: size, colour: value);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FormattingProps &&
+          other.font == font &&
+          other.size == size &&
+          other.colour == colour;
+
+  @override
+  int get hashCode => Object.hash(font, size, colour);
 }
 
 /// Document-wide formatting settings collected from font/size/colour
@@ -44,6 +56,14 @@ class FormattingSettings {
 
   /// Whether no settings have been declared.
   bool get isEmpty => byTarget.isEmpty;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FormattingSettings && mapEquals(other.byTarget, byTarget);
+
+  @override
+  int get hashCode => mapHash(byTarget);
 }
 
 const Set<String> _knownTargets = {
@@ -111,11 +131,8 @@ FormattingSettings reduceFormatting(
     if (d.value == null) continue;
     if (d.selector != null) {
       final active = includeSelected.contains(d.selector);
-      final applies = switch (d.polarity) {
-        Polarity.positive => active,
-        Polarity.negative => !active,
-        Polarity.none => true,
-      };
+      // A selector always comes with a positive or negative polarity.
+      final applies = d.polarity == Polarity.negative ? !active : active;
       if (!applies) continue;
     }
     final match = matchFormattingDirective(d.name);

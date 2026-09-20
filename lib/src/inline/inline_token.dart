@@ -19,6 +19,14 @@ final class TextToken extends InlineToken {
   final String text;
 
   @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TextToken && other.text == text && other.span == span;
+
+  @override
+  int get hashCode => Object.hash(text, span);
+
+  @override
   String toString() => 'TextToken($text)';
 }
 
@@ -41,6 +49,17 @@ final class ChordToken extends InlineToken {
   final Chord? chord;
 
   @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChordToken &&
+          other.raw == raw &&
+          other.chord == chord &&
+          other.span == span;
+
+  @override
+  int get hashCode => Object.hash(raw, chord, span);
+
+  @override
   String toString() => 'ChordToken($raw)';
 }
 
@@ -51,6 +70,14 @@ final class AnnotationToken extends InlineToken {
 
   /// Annotation text (without the leading `*`).
   final String text;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AnnotationToken && other.text == text && other.span == span;
+
+  @override
+  int get hashCode => Object.hash(text, span);
 
   @override
   String toString() => 'AnnotationToken($text)';
@@ -69,6 +96,13 @@ final class ChordRecallToken extends InlineToken {
   const ChordRecallToken({required super.span});
 
   @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is ChordRecallToken && other.span == span;
+
+  @override
+  int get hashCode => span.hashCode;
+
+  @override
   String toString() => 'ChordRecallToken()';
 }
 
@@ -82,6 +116,16 @@ final class InlineDirectiveToken extends InlineToken {
 
   /// The parsed directive.
   final Directive directive;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is InlineDirectiveToken &&
+          other.directive == directive &&
+          other.span == span;
+
+  @override
+  int get hashCode => Object.hash(directive, span);
 
   @override
   String toString() => 'InlineDirectiveToken($directive)';

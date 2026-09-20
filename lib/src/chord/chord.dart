@@ -32,7 +32,7 @@ class Chord {
     required this.root,
     required this.raw,
     this.quality,
-    this.extensions = const [],
+    this.extension,
     this.bass,
   });
 
@@ -45,8 +45,13 @@ class Chord {
   /// Optional quality marker (`m`, `maj`, `dim`, `aug`, `sus2`, ...).
   final String? quality;
 
-  /// Extensions after the quality (e.g. `7`, `b9`, `add11`).
-  final List<String> extensions;
+  /// Everything after the quality, verbatim (e.g. `7`, `b9`, `11`).
+  ///
+  /// The ChordPro spec does not define a grammar for what follows the
+  /// quality, so the remainder is captured as a single string rather than
+  /// split into parts. `null` when the chord has nothing after its
+  /// quality.
+  final String? extension;
 
   /// Bass note for slash chords (e.g. `G/B` → bass root `B`).
   final Chord? bass;
@@ -90,7 +95,7 @@ class Chord {
           system: parsedBass.system,
           root: parsedBass.root,
           quality: parsedBass.quality,
-          extensions: parsedBass.extensions,
+          extension: parsedBass.extension,
           raw: tail,
         );
       }
@@ -100,7 +105,7 @@ class Chord {
       system: headParsed.system,
       root: headParsed.root,
       quality: headParsed.quality,
-      extensions: headParsed.extensions,
+      extension: headParsed.extension,
       bass: bass,
       raw: raw,
     );
@@ -135,16 +140,30 @@ class Chord {
       accidentals: accidentals,
       forceCommonKeys: forceCommonKeys,
     );
-    final raw = _renderLetter(newRoot, quality, extensions, newBass);
+    final raw = _renderLetter(newRoot, quality, extension, newBass);
     return Chord(
       system: system,
       root: newRoot,
       quality: quality,
-      extensions: extensions,
+      extension: extension,
       bass: newBass,
       raw: raw,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Chord &&
+          other.system == system &&
+          other.root == root &&
+          other.quality == quality &&
+          other.extension == extension &&
+          other.bass == bass &&
+          other.raw == raw;
+
+  @override
+  int get hashCode => Object.hash(system, root, quality, extension, bass, raw);
 
   @override
   String toString() => raw;
@@ -166,11 +185,12 @@ String? transposeRoot(
 }) {
   final s = _rootToSemitone[_canonicaliseRoot(root)];
   if (s == null) return null;
+  // Dart's `%` always yields a non-negative result for a positive
+  // modulus, so this is already in 0..11 for negative [semitones] too.
   final shifted = (s + semitones) % 12;
-  final positive = shifted < 0 ? shifted + 12 : shifted;
   final result = accidentals == AccidentalPreference.flats
-      ? _semitoneToFlat[positive]
-      : _semitoneToSharp[positive];
+      ? _semitoneToFlat[shifted]
+      : _semitoneToSharp[shifted];
   if (!forceCommonKeys) return result;
   return _forceCommonKeys[result] ?? result;
 }
@@ -213,11 +233,11 @@ String _canonicaliseRoot(String root) {
 String _renderLetter(
   String root,
   String? quality,
-  List<String> extensions,
+  String? extension,
   Chord? bass,
 ) {
   final q = quality ?? '';
-  final ext = extensions.join();
+  final ext = extension ?? '';
   final bassPart = bass == null ? '' : '/${bass.raw}';
   return '$root$q$ext$bassPart';
 }
@@ -253,39 +273,52 @@ const List<String> _semitoneToFlat = [
 ];
 
 class _Parsed {
-  _Parsed(this.system, this.root, this.quality, this.extensions);
+  _Parsed(this.system, this.root, this.quality, this.extension);
   final ChordSystem system;
   final String root;
   final String? quality;
-  final List<String> extensions;
+  final String? extension;
 }
 
 _Parsed? _parseSimple(String s, {bool notesMode = false}) {
-  final rootEnd = _rootEnd(s, notesMode: notesMode);
-  if (rootEnd == 0) return null;
-  final root = s.substring(0, rootEnd);
-  final system = _systemFor(root);
-  final rest = s.substring(rootEnd);
+  final rootMatch = _rootEnd(s, notesMode: notesMode);
+  if (rootMatch == null) return null;
+  final root = s.substring(0, rootMatch.end);
+  final rest = s.substring(rootMatch.end);
 
   String? quality;
   var cursor = 0;
   for (final q in _qualities) {
-    if (rest.startsWith(q, cursor)) {
+    if (rest.startsWith(q)) {
       quality = q;
-      cursor += q.length;
+      cursor = q.length;
       break;
     }
   }
 
-  final extensions = <String>[];
-  if (cursor < rest.length) {
-    extensions.add(rest.substring(cursor));
-  }
-
-  return _Parsed(system, root, quality, extensions);
+  return _Parsed(
+    rootMatch.system,
+    root,
+    quality,
+    cursor < rest.length ? rest.substring(cursor) : null,
+  );
 }
 
-int _rootEnd(String s, {bool notesMode = false}) {
+/// The root that [_rootEnd] matched: how far it reaches and which
+/// notation system the matching branch implies.
+class _RootMatch {
+  const _RootMatch(this.end, this.system);
+  final int end;
+  final ChordSystem system;
+}
+
+/// Finds the root at the start of [s], or `null` when there is none.
+///
+/// The system is decided by the branch that matched rather than by
+/// re-inspecting the matched text: a leading `b` is a Nashville flat when
+/// [notesMode] is off (`b7`) but a letter root when it is on (`bb` = B
+/// flat), and the two cannot be told apart from the root text alone.
+_RootMatch? _rootEnd(String s, {bool notesMode = false}) {
   final c0 = s.codeUnitAt(0);
   // Letter (A-H) chord. H is German notation for B.
   if ((c0 >= 0x41 && c0 <= 0x47) || c0 == 0x48) {
@@ -293,7 +326,7 @@ int _rootEnd(String s, {bool notesMode = false}) {
     if (i < s.length && _isAccidental(s.codeUnitAt(i))) {
       i++;
     }
-    return i;
+    return _RootMatch(i, ChordSystem.letter);
   }
   // Notes mode: lowercase a-g are letter roots (mirrors `settings.notes`).
   // Checked before the accidental branch so that `b` is a root, not a flat.
@@ -302,34 +335,27 @@ int _rootEnd(String s, {bool notesMode = false}) {
     if (i < s.length && _isAccidental(s.codeUnitAt(i))) {
       i++;
     }
-    return i;
+    return _RootMatch(i, ChordSystem.letter);
   }
   // Nashville: optional accidental then digit 1..7.
   if (_isAccidental(c0)) {
-    if (s.length >= 2 && _isNashvilleDigit(s.codeUnitAt(1))) return 2;
-    return 0;
+    if (s.length >= 2 && _isNashvilleDigit(s.codeUnitAt(1))) {
+      return const _RootMatch(2, ChordSystem.nashville);
+    }
+    return null;
   }
-  if (_isNashvilleDigit(c0)) return 1;
+  if (_isNashvilleDigit(c0)) {
+    return const _RootMatch(1, ChordSystem.nashville);
+  }
   // Roman: sequence of I/V upper- or lower-case.
   if (_isRomanChar(c0)) {
     var i = 1;
     while (i < s.length && _isRomanChar(s.codeUnitAt(i))) {
       i++;
     }
-    return i;
+    return _RootMatch(i, ChordSystem.roman);
   }
-  return 0;
-}
-
-ChordSystem _systemFor(String root) {
-  final c0 = root.codeUnitAt(0);
-  if ((c0 >= 0x41 && c0 <= 0x47) || c0 == 0x48) return ChordSystem.letter;
-  // Notes-mode lowercase a-g → letter system.
-  if (c0 >= 0x61 && c0 <= 0x67) return ChordSystem.letter;
-  if (_isNashvilleDigit(c0) || _isAccidental(c0)) {
-    return ChordSystem.nashville;
-  }
-  return ChordSystem.roman;
+  return null;
 }
 
 bool _isNashvilleDigit(int c) => c >= 0x31 && c <= 0x37; // 1..7

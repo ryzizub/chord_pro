@@ -85,7 +85,14 @@ String _stripLead(String s) {
 }
 
 String _resolveUnicodeEscapes(String s) {
-  if (s.length < 6) return s;
+  // Fast path: no backslash means nothing to resolve. Worth the scan —
+  // the three passes below each rebuild the whole line otherwise, and
+  // the overwhelming majority of lines carry no escape at all.
+  //
+  // Note there is deliberately no minimum-length guard here: the brace
+  // form accepts a single hex digit, so `\u{7}` (5 characters) is a
+  // complete escape and must still be resolved.
+  if (!s.contains(r'\')) return s;
   // 1) Surrogate-pair recombination must run first so a high-low pair
   //    becomes one astral code point rather than two BMP characters.
   var t = _resolveSurrogatePairs(s);

@@ -1,5 +1,7 @@
 import 'package:chord_pro/src/ast/transpose_qualifier.dart';
+import 'package:chord_pro/src/diagnostic/diagnostic.dart';
 import 'package:chord_pro/src/directive/directive.dart';
+import 'package:chord_pro/src/util/equality.dart';
 
 /// Structured metadata collected from a song's directives.
 ///
@@ -149,6 +151,58 @@ class Metadata {
       columns == null &&
       tags.isEmpty &&
       other.isEmpty;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! Metadata) return false;
+    return listEquals(other.titles, titles) &&
+        listEquals(other.sortTitles, sortTitles) &&
+        listEquals(other.subtitles, subtitles) &&
+        listEquals(other.artists, artists) &&
+        listEquals(other.sortArtists, sortArtists) &&
+        listEquals(other.composers, composers) &&
+        listEquals(other.lyricists, lyricists) &&
+        listEquals(other.arrangers, arrangers) &&
+        listEquals(other.keys, keys) &&
+        listEquals(other.times, times) &&
+        listEquals(other.tempos, tempos) &&
+        listEquals(other.tags, tags) &&
+        other.copyright == copyright &&
+        other.album == album &&
+        other.year == year &&
+        other.duration == duration &&
+        other.capo == capo &&
+        other.transpose == transpose &&
+        other.transposeQualifier == transposeQualifier &&
+        other.columns == columns &&
+        mapOfListsEquals(other.other, this.other);
+  }
+
+  @override
+  int get hashCode => Object.hashAll(<Object?>[
+        Object.hashAll(titles),
+        Object.hashAll(sortTitles),
+        Object.hashAll(subtitles),
+        Object.hashAll(artists),
+        Object.hashAll(sortArtists),
+        Object.hashAll(composers),
+        Object.hashAll(lyricists),
+        Object.hashAll(arrangers),
+        Object.hashAll(keys),
+        Object.hashAll(times),
+        Object.hashAll(tempos),
+        Object.hashAll(tags),
+        copyright,
+        album,
+        year,
+        duration,
+        capo,
+        transpose,
+        transposeQualifier,
+        columns,
+        mapOfListsHash(other),
+      ]);
 }
 
 /// Known metadata directive names plus their short-form aliases.
@@ -255,10 +309,26 @@ const Set<String> _multiValuedMetadataNames = {
 /// the input stream before calling this function. When [includeSelected]
 /// is non-empty, directives whose selector is in that set (for the
 /// right polarity) are merged in as if bare.
+///
+/// When [diagnostics] is supplied, a warning is appended for every
+/// directive that wants a whole number but was given something else
+/// (`{capo: high}`), instead of dropping it in silence.
 Metadata reduceMetadata(
   Iterable<Directive> directives, {
   Set<String> includeSelected = const {},
+  List<Diagnostic>? diagnostics,
 }) {
+  void invalidNumber(Directive d, String name, String value) {
+    diagnostics?.add(
+      Diagnostic(
+        severity: DiagnosticSeverity.warning,
+        code: DiagnosticCode.invalidNumericValue,
+        message: '{$name} expects a whole number, got "$value".',
+        span: d.span,
+      ),
+    );
+  }
+
   final titles = <String>[];
   final sortTitles = <String>[];
   final subtitles = <String>[];
@@ -285,11 +355,8 @@ Metadata reduceMetadata(
     if (d.isCustomExtension) continue;
     if (d.selector != null) {
       final active = includeSelected.contains(d.selector);
-      final applies = switch (d.polarity) {
-        Polarity.positive => active,
-        Polarity.negative => !active,
-        Polarity.none => true,
-      };
+      // A selector always comes with a positive or negative polarity.
+      final applies = d.polarity == Polarity.negative ? !active : active;
       if (!applies) continue;
     }
     final name = _metadataAliases[d.name] ?? d.name;
@@ -336,7 +403,10 @@ Metadata reduceMetadata(
     } else if (_intMetadataNames.contains(name)) {
       if (name == 'transpose') {
         final m = _transposeRe.firstMatch(value);
-        if (m == null) continue;
+        if (m == null) {
+          invalidNumber(d, name, value);
+          continue;
+        }
         transpose = int.parse(m.group(1)!);
         final tag = m.group(2)?.toLowerCase();
         transposeQualifier = switch (tag) {
@@ -348,7 +418,10 @@ Metadata reduceMetadata(
         continue;
       }
       final n = int.tryParse(value);
-      if (n == null) continue;
+      if (n == null) {
+        invalidNumber(d, name, value);
+        continue;
+      }
       switch (name) {
         case 'year':
           year = n;

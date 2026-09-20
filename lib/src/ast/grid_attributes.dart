@@ -1,3 +1,5 @@
+import 'package:chord_pro/src/util/equality.dart';
+
 /// Typed shape and chord-context fields for `{start_of_grid}` per
 /// `lib/ChordPro/Song.pm:1479-1525`.
 ///
@@ -100,6 +102,33 @@ class GridAttributes {
   /// `label="..."` from the start_of_grid directive (or the bare
   /// legacy form before the colon was added to the spec).
   final String? label;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is GridAttributes &&
+          other.leftMargin == leftMargin &&
+          other.measures == measures &&
+          other.beats == beats &&
+          other.rightMargin == rightMargin &&
+          other.shapeLabel == shapeLabel &&
+          other.cc == cc &&
+          other.ccName == ccName &&
+          listEquals(other.ccProgression, ccProgression) &&
+          other.label == label;
+
+  @override
+  int get hashCode => Object.hash(
+        leftMargin,
+        measures,
+        beats,
+        rightMargin,
+        shapeLabel,
+        cc,
+        ccName,
+        Object.hashAll(ccProgression),
+        label,
+      );
 }
 
 class _CcDecoded {

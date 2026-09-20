@@ -126,4 +126,55 @@ class TextblockAttributes {
 
   /// `title=` — inherited from `{image}`.
   final String? title;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TextblockAttributes &&
+          other.width == width &&
+          other.height == height &&
+          other.padding == padding &&
+          other.flush == flush &&
+          other.vflush == vflush &&
+          other.textstyle == textstyle &&
+          other.textsize == textsize &&
+          other.textspacing == textspacing &&
+          other.textcolor == textcolor &&
+          other.background == background &&
+          other.omit == omit &&
+          other.align == align &&
+          other.anchor == anchor &&
+          other.x == x &&
+          other.y == y &&
+          other.border == border &&
+          other.bordertrbl == bordertrbl &&
+          other.id == id &&
+          other.persist == persist &&
+          other.href == href &&
+          other.title == title;
+
+  @override
+  int get hashCode => Object.hashAll(<Object?>[
+        width,
+        height,
+        padding,
+        flush,
+        vflush,
+        textstyle,
+        textsize,
+        textspacing,
+        textcolor,
+        background,
+        omit,
+        align,
+        anchor,
+        x,
+        y,
+        border,
+        bordertrbl,
+        id,
+        persist,
+        href,
+        title,
+      ]);
 }

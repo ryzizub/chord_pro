@@ -2,6 +2,21 @@ import 'package:chord_pro/chord_pro.dart';
 import 'package:test/test.dart';
 
 void main() {
+  group('FormattingProps', () {
+    test('isEmpty is true only when nothing is set', () {
+      expect(const FormattingProps().isEmpty, isTrue);
+      expect(const FormattingProps(font: 'Times').isEmpty, isFalse);
+      expect(const FormattingProps(size: '12').isEmpty, isFalse);
+      expect(const FormattingProps(colour: 'red').isEmpty, isFalse);
+    });
+
+    test('forTarget returns an empty record for an unset target', () {
+      const settings = FormattingSettings();
+      expect(settings.forTarget('chord').isEmpty, isTrue);
+      expect(settings.isEmpty, isTrue);
+    });
+  });
+
   group('FormattingSettings', () {
     test('collects font/size/colour overrides per target', () {
       const source = '''

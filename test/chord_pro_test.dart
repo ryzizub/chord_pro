@@ -4,6 +4,52 @@ import 'package:chord_pro/chord_pro.dart';
 import 'package:test/test.dart';
 
 void main() {
+  group('altBrackets', () {
+    test('rewrites the pair in lyric lines', () {
+      final song = ChordPro.parseSong('«C»hello «G»world', altBrackets: '«»');
+      final chords = song.sections.first.lines.first.tokens
+          .whereType<ChordToken>()
+          .map((t) => t.raw)
+          .toList();
+      expect(chords, ['C', 'G']);
+    });
+
+    test('leaves directive values alone', () {
+      // A song that uses «» as quotation marks in its title must not have
+      // them rewritten into brackets.
+      final song = ChordPro.parseSong('{title: «Hello»}', altBrackets: '«»');
+      expect(song.metadata.titles.single, '«Hello»');
+    });
+
+    test('leaves verbatim bodies alone', () {
+      final song = ChordPro.parseSong(
+        '{start_of_tab}\n«hi»\n{end_of_tab}',
+        altBrackets: '«»',
+      );
+      expect(song.sections.first.lines.first.verbatim, '«hi»');
+    });
+
+    test('the real brackets keep working alongside the pair', () {
+      final song = ChordPro.parseSong('«C»a [G]b', altBrackets: '«»');
+      final chords = song.sections.first.lines.first.tokens
+          .whereType<ChordToken>()
+          .map((t) => t.raw)
+          .toList();
+      expect(chords, ['C', 'G']);
+    });
+
+    test('rejects a pair that is not exactly two characters', () {
+      expect(
+        () => ChordPro.parse('x', altBrackets: '«'),
+        throwsArgumentError,
+      );
+      expect(
+        () => ChordPro.parse('x', altBrackets: '«»!'),
+        throwsArgumentError,
+      );
+    });
+  });
+
   group('ChordPro.parse', () {
     test('returns a single (empty) song for empty input', () {
       final result = ChordPro.parse('');

@@ -4,6 +4,35 @@ import 'package:test/test.dart';
 RawLine _line(String text) => RawLine(number: 1, text: text);
 
 void main() {
+  group('tokenizeInline recovery', () {
+    test('an unterminated `{` stays literal text', () {
+      final tokens = tokenizeInline(
+        const RawLine(number: 1, text: 'a {not a directive'),
+      );
+      expect(
+        tokens.whereType<TextToken>().map((t) => t.text).join(),
+        'a {not a directive',
+      );
+      expect(tokens.whereType<InlineDirectiveToken>(), isEmpty);
+    });
+
+    test('an unterminated `[` stays literal text', () {
+      final tokens = tokenizeInline(
+        const RawLine(number: 1, text: 'a [C unfinished'),
+      );
+      expect(
+        tokens.whereType<TextToken>().map((t) => t.text).join(),
+        'a [C unfinished',
+      );
+      expect(tokens.whereType<ChordToken>(), isEmpty);
+    });
+
+    test('the token list is unmodifiable', () {
+      final tokens = tokenizeInline(const RawLine(number: 1, text: '[C]hi'));
+      expect(tokens.clear, throwsUnsupportedError);
+    });
+  });
+
   group('tokenizeInline', () {
     test('plain text → single TextToken', () {
       final tokens = tokenizeInline(_line('Mama, take this badge'));

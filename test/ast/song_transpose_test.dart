@@ -39,9 +39,43 @@ void main() {
       expect(song.transposed(2).metadata.key, 'A');
     });
 
-    test('zero-step transposition is identity', () {
+    test('zero-step transposition leaves the song equal', () {
       final song = ChordPro.parseSong('{key: G}\n[G]hi');
-      expect(identical(song.transposed(0), song), isTrue);
+      final same = song.transposed(0);
+      expect(same.metadata.key, 'G');
+      expect(_chords(same), ['G']);
+    });
+
+    test('zero-step transposition respells to the requested accidentals', () {
+      // `transposed` normalises spelling as well as pitch, so a zero-step
+      // pass is how a caller asks for the song in flats.
+      final song = ChordPro.parseSong('{key: C#}\n[C#]hi [D#m]there');
+      final flat = song.transposed(0, accidentals: AccidentalPreference.flats);
+      expect(_chords(flat), ['Db', 'Ebm']);
+      expect(flat.metadata.key, 'Db');
+    });
+
+    test('an octave transposition keeps the pitch class', () {
+      final song = ChordPro.parseSong('[G]hi');
+      expect(_chords(song.transposed(12)), ['G']);
+      expect(_chords(song.transposed(-12)), ['G']);
+    });
+
+    test('keeps section attributes', () {
+      final song = ChordPro.parseSong(
+        '{start_of_grid: 4x4}\n| [C] |\n{end_of_grid}',
+      );
+      final moved = song.transposed(2);
+      expect(moved.sections.first.attributes, {'shape': '4x4'});
+      expect(moved.sections.first.gridAttributes?.measures, 4);
+      expect(moved.sections.first.gridAttributes?.beats, 4);
     });
   });
 }
+
+List<String> _chords(Song song) => [
+      for (final section in song.sections)
+        for (final line in section.lines)
+          for (final token in line.tokens)
+            if (token is ChordToken) token.raw,
+    ];
