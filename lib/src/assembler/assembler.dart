@@ -64,6 +64,12 @@ ParseResult assemble(
   // current selector set: every line until the matching `end_of_X` is
   // suppressed (still appended to the directive stream for round-trip).
   _StartKind? skipUntilEnd;
+  // The suppressed section itself, collecting its body lines. They are
+  // tokenized exactly as they would have been had the selector applied,
+  // and the finished section is flagged `isSelectorSuppressed` so a
+  // renderer can skip it while a re-emitter can still put the body back
+  // (issue #36).
+  _OpenSection? skipOpen;
   // Span of the `start_of_X` that opened [skipUntilEnd], for diagnostics.
   SourceSpan? skipStartSpan;
   // Nesting depth inside the suppressed section: a same-kind start
@@ -107,6 +113,11 @@ ParseResult assemble(
       skipUntilEnd = null;
       skipStartSpan = null;
       skipDepth = 0;
+    }
+    if (skipOpen != null) {
+      final s = skipOpen!.finish();
+      if (s != null) sections.add(s);
+      skipOpen = null;
     }
     if (open != null) {
       if (open!.kind != SectionKind.loose) {
@@ -195,9 +206,18 @@ ParseResult assemble(
           } else {
             skipUntilEnd = null;
             skipStartSpan = null;
+            final s = skipOpen?.finish(directive.span);
+            if (s != null) sections.add(s);
+            skipOpen = null;
           }
         }
+        continue;
       }
+      // A body line of the suppressed section. Directives inside the
+      // range are deliberately not turned into lines: they are already
+      // in the directive stream, and re-running them here would apply
+      // song-level settings the selector said to skip.
+      skipOpen?.addLine(line);
       continue;
     }
 
@@ -245,6 +265,40 @@ ParseResult assemble(
           skipUntilEnd = startKind;
           skipStartSpan = directive.span;
           skipDepth = 0;
+          // The body is captured rather than dropped, so the suppressed
+          // section is opened exactly as an applying one would be — same
+          // auto-close of an enclosing section, same attribute parsing,
+          // same tokenization — and only the flag differs.
+          if (open != null && open!.kind != SectionKind.loose) {
+            diagnostics.add(
+              Diagnostic(
+                severity: DiagnosticSeverity.warning,
+                code: DiagnosticCode.nestedSection,
+                message: 'Nested or unclosed ${open!.kind.name} section; '
+                    'auto-closing before ${directive.name}.',
+                span: directive.span,
+              ),
+            );
+            final s = open!.finish();
+            if (s != null) sections.add(s);
+            open = null;
+          }
+          closeLoose();
+          recallAutoClosed = null;
+          final defaultKey =
+              startKind.kind == SectionKind.grid ? 'shape' : 'label';
+          final attrs = parseKv(directive.value ?? '', defaultKey: defaultKey);
+          final label = attrs.remove('label');
+          skipOpen = _OpenSection(
+            kind: startKind.kind,
+            customKind: startKind.customKind,
+            label: label,
+            attributes: Map<String, String>.unmodifiable(attrs),
+            startSpan: directive.span,
+            notesMode: notesMode,
+            altBrackets: brackets,
+            isSelectorSuppressed: true,
+          );
         }
         // Non-section directives are simply suppressed; metadata and
         // formatting reducers already filter selector-tagged directives
@@ -638,6 +692,7 @@ class _OpenSection {
     this.attributes = const {},
     this.notesMode = false,
     this.altBrackets,
+    this.isSelectorSuppressed = false,
   });
 
   final SectionKind kind;
@@ -647,6 +702,7 @@ class _OpenSection {
   final SourceSpan startSpan;
   final bool notesMode;
   final _AltBrackets? altBrackets;
+  final bool isSelectorSuppressed;
   final List<Line> _lines = [];
 
   bool get isVerbatim =>
@@ -707,6 +763,7 @@ class _OpenSection {
       label: label,
       customKind: customKind,
       attributes: attributes,
+      isSelectorSuppressed: isSelectorSuppressed,
       lines: List.unmodifiable(_lines),
       span: SourceSpan(
         line: startSpan.line,
