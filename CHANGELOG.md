@@ -24,6 +24,18 @@
 * `Song.activeSections` — the sections a selector-honouring renderer should
   output, i.e. `sections` without the suppressed ones.
 
+### Fixed
+
+* Inside a verbatim environment (`tab`, `grid`, `abc`, `ly`, `svg`,
+  `textblock`, `grille`) only the matching `{end_of_X}` is interpreted now.
+  A body line starting with `{` — a LilyPond `{\key c \major}`, a tab
+  annotated `{riff x2}` — used to be parsed as a directive, so it vanished
+  from the section body and reappeared in `Song.directives` with no
+  diagnostic. Such lines are `Line.verbatim` body text again, and no longer
+  land in `Song.directives`. The same rule applies to a
+  selector-suppressed verbatim environment.
+  Spec: <https://www.chordpro.org/chordpro/directives-env_tab/>
+
 ## 0.7.0
 
 Correctness and API release from a full package review. Three parser bugs

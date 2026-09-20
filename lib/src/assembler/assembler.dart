@@ -185,8 +185,30 @@ ParseResult assemble(
 
     // Inside a selector-skipped section: consume until the matching end
     // directive arrives. Every directive is still appended to the
-    // directive stream so that `Song.directives` is lossless.
+    // directive stream so that `Song.directives` is lossless — except in
+    // a verbatim environment, where the body holds no directives to
+    // begin with (see the two blocks below).
     final pending = skipUntilEnd;
+    if (pending != null && _isVerbatimKind(pending.kind)) {
+      // A suppressed verbatim environment obeys the same rule as an open
+      // one (see below): only the matching end directive is a directive,
+      // so nothing in the body reaches the directive stream — not even a
+      // song boundary. Nesting cannot occur, since an inner
+      // `{start_of_X}` is body text too. The body itself is still kept
+      // on the suppressed section (issue #36), just as verbatim lines.
+      if (directive != null &&
+          _sameSection(_endKindOf(directive.name), pending)) {
+        directives.add(directive);
+        skipUntilEnd = null;
+        skipStartSpan = null;
+        final s = skipOpen?.finish(directive.span);
+        if (s != null) sections.add(s);
+        skipOpen = null;
+      } else {
+        skipOpen?.addLine(line);
+      }
+      continue;
+    }
     // A song boundary is structural and is never conditional, so it ends
     // the suppression rather than being swallowed by it. Falling through
     // (instead of `continue`) hands the directive to the `{new_song}`
@@ -219,6 +241,24 @@ ParseResult assemble(
       // song-level settings the selector said to skip.
       skipOpen?.addLine(line);
       continue;
+    }
+
+    // Inside a verbatim environment the body is printed as-is, so only
+    // the matching `end_of_X` is interpreted; every other line — brace
+    // leading or not — is body text (Song.pm:622 for tab, Song.pm:631
+    // for the delegated environments, both of which test for their own
+    // end directive before the generic directive branch is reached).
+    final openVerbatim = open;
+    if (openVerbatim != null && openVerbatim.isVerbatim) {
+      final closes = directive != null &&
+          _sameSection(
+            _endKindOf(directive.name),
+            _StartKind(openVerbatim.kind, openVerbatim.customKind),
+          );
+      if (!closes) {
+        openVerbatim.addLine(line);
+        continue;
+      }
     }
 
     if (directive != null) {
@@ -537,6 +577,18 @@ class _StartKind {
   final String? customKind;
 }
 
+/// Whether a section of [kind] has a body that is captured verbatim —
+/// no inline tokenization, and no directive recognition beyond its own
+/// `end_of_X` (Song.pm:622, Song.pm:631).
+bool _isVerbatimKind(SectionKind kind) =>
+    kind == SectionKind.tab ||
+    kind == SectionKind.grid ||
+    kind == SectionKind.abc ||
+    kind == SectionKind.ly ||
+    kind == SectionKind.svg ||
+    kind == SectionKind.textblock ||
+    kind == SectionKind.grille;
+
 /// Whether [candidate] names the same section as [target], taking the
 /// custom-environment name into account.
 bool _sameSection(_StartKind? candidate, _StartKind target) =>
@@ -705,14 +757,7 @@ class _OpenSection {
   final bool isSelectorSuppressed;
   final List<Line> _lines = [];
 
-  bool get isVerbatim =>
-      kind == SectionKind.tab ||
-      kind == SectionKind.grid ||
-      kind == SectionKind.abc ||
-      kind == SectionKind.ly ||
-      kind == SectionKind.svg ||
-      kind == SectionKind.textblock ||
-      kind == SectionKind.grille;
+  bool get isVerbatim => _isVerbatimKind(kind);
 
   void addLine(RawLine line) {
     if (isVerbatim) {
