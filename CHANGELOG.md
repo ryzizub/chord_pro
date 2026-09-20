@@ -1,4 +1,9 @@
-## Unreleased
+## 0.8.0
+
+Round-tripping release. Text that the parser used to drop on the floor —
+the body of a selector-suppressed section, and a verbatim line that happens
+to start with `{` — now survives into the AST, so re-emitting a song from
+what was parsed no longer loses lines.
 
 ### Breaking
 
