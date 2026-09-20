@@ -113,13 +113,29 @@ void main() {
 [D]after
 ''';
       final song = ChordPro.parseSong(source);
-      // No selectors active, so the `-soprano` section is gated out.
-      // Only the surrounding loose lines remain.
-      expect(song.sections, hasLength(1));
-      final lines = song.sections.single.lines;
+      // No selectors active, so the `-soprano` section is gated out of
+      // what a renderer outputs — but its body is kept, flagged, in
+      // source order between the two loose runs (issue #36).
+      expect(
+        song.sections.map((s) => s.isSelectorSuppressed),
+        [false, true, false],
+      );
+      final active = song.activeSections.toList();
+      expect(active, hasLength(2));
+      final lines = [for (final s in active) ...s.lines];
       expect(lines, hasLength(2));
       expect(lines.first.kind, LineKind.structured);
       expect(lines.last.kind, LineKind.structured);
+      // The suppressed body line is reachable; the `{comment}` inside the
+      // range stays in the directive stream rather than becoming a line.
+      final suppressed = song.sections[1];
+      expect(suppressed.kind, SectionKind.verse);
+      expect(suppressed.lines, hasLength(1));
+      expect(
+        suppressed.lines.single.tokens.whereType<TextToken>().single.text,
+        'inside that should be hidden',
+      );
+      expect(song.directives.map((d) => d.name), contains('comment'));
     });
 
     test('section start with active positive selector keeps body', () {

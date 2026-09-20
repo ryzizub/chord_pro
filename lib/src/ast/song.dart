@@ -28,6 +28,11 @@ class Song {
   final Metadata metadata;
 
   /// Sections in source order (loose text, verses, choruses, tabs, …).
+  ///
+  /// Includes sections whose start directive carried an inactive
+  /// selector; those are flagged with [Section.isSelectorSuppressed] so
+  /// nothing is lost for re-emission. Renderers that honour selectors
+  /// should iterate [activeSections] instead.
   final List<Section> sections;
 
   /// Chord definitions declared via `{define}` / `{chord}`.
@@ -58,6 +63,12 @@ class Song {
   /// `null` when the song has no `{diagrams}` directive — callers
   /// should treat that as "use the renderer's default".
   final DiagramsSetting? diagrams;
+
+  /// The subset of [sections] a selector-honouring renderer should
+  /// output: every section except those suppressed by an inactive
+  /// selector.
+  Iterable<Section> get activeSections =>
+      sections.where((s) => !s.isSelectorSuppressed);
 
   /// Directives in the `x_*` custom namespace, in source order.
   Iterable<Directive> get customExtensions =>
@@ -92,6 +103,7 @@ class Song {
             label: s.label,
             customKind: s.customKind,
             isChorusRecall: s.isChorusRecall,
+            isSelectorSuppressed: s.isSelectorSuppressed,
             attributes: s.attributes,
             span: s.span,
             lines: List.unmodifiable(

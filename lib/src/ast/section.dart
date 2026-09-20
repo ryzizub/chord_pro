@@ -58,6 +58,7 @@ class Section {
     this.label,
     this.customKind,
     this.isChorusRecall = false,
+    this.isSelectorSuppressed = false,
     this.attributes = const {},
   });
 
@@ -85,6 +86,25 @@ class Section {
   /// True when this section is a bare `{chorus}` recall rather than an
   /// authored chorus body.
   final bool isChorusRecall;
+
+  /// True when the section's start directive carried a selector that was
+  /// not active for this parse, e.g. `{start_of_verse-guitar}` parsed
+  /// without `guitar` in `selectors`.
+  ///
+  /// The body lines are still captured — tokenized exactly as they would
+  /// have been had the selector applied — so a consumer can re-emit the
+  /// document losslessly or render the section anyway. A renderer
+  /// honouring the selector should skip these; `Song.activeSections` does
+  /// that filtering.
+  ///
+  /// Directives *inside* the suppressed range are not replayed as [lines]:
+  /// they stay in `Song.directives` (in source order, with their spans)
+  /// and are deliberately not applied, since the selector said to skip
+  /// them. So a `{comment}` inside a suppressed verse is reachable from
+  /// the directive stream rather than from [lines].
+  ///
+  /// Spec: https://www.chordpro.org/chordpro/chordpro-configuration-selectors/
+  final bool isSelectorSuppressed;
 
   /// Any extra `key=value` attributes parsed from the start-of
   /// directive body, **excluding** `label` (which is surfaced via the
@@ -122,6 +142,7 @@ class Section {
           listEquals(other.lines, lines) &&
           other.span == span &&
           other.isChorusRecall == isChorusRecall &&
+          other.isSelectorSuppressed == isSelectorSuppressed &&
           mapEquals(other.attributes, attributes);
 
   @override
@@ -132,6 +153,7 @@ class Section {
         Object.hashAll(lines),
         span,
         isChorusRecall,
+        isSelectorSuppressed,
         mapHash(attributes),
       );
 }

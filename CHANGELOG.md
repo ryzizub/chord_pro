@@ -1,3 +1,29 @@
+## Unreleased
+
+### Breaking
+
+* A `{start_of_X-sel}` whose selector is not active now produces a `Section`
+  in `Song.sections` instead of being dropped. The section is flagged with
+  the new `Section.isSelectorSuppressed` and carries its body lines, so
+  re-emitting a song from the AST no longer deletes the text between the
+  markers ([#36](https://github.com/ryzizub/chord_pro/issues/36)).
+  A renderer that honours selectors should iterate the new
+  `Song.activeSections` (`sections` minus the suppressed ones) instead of
+  `sections`. Two consequences of the section now being real: a run of loose
+  lines interrupted by a suppressed section is split into two loose sections
+  rather than joined into one, and a suppressed start inside an open section
+  auto-closes it with the same `nestedSection` diagnostic an applying start
+  already produced.
+  Spec: <https://www.chordpro.org/chordpro/chordpro-configuration-selectors/>
+
+### New
+
+* `Section.isSelectorSuppressed` — `true` when the section's start directive
+  carried a selector that was not active for this parse. Carried through
+  `Song.transposed` and part of `Section` equality.
+* `Song.activeSections` — the sections a selector-honouring renderer should
+  output, i.e. `sections` without the suppressed ones.
+
 ## 0.7.0
 
 Correctness and API release from a full package review. Three parser bugs
