@@ -385,6 +385,7 @@ original pitch. Recorded in `doc/reference/limitations.md`; the audit test
 Common rules:
 
 - [x] Body captured verbatim and passed to a delegate.
+- [x] Inside the environment only its own `{end_of_X}` is interpreted; every other line, including one starting with `{`, is body text (`Song.pm:631` tests for `end_of_$in_context` before the generic directive branch — the same rule `tab` gets at `Song.pm:622`).
 - [x] Output is normally an image; delegate may set `type=omit` or `type=none` in config.
 - [x] Delegated envs share image-directive attributes (e.g. `label`, `align`, `id`, `width`, `height`, `scale`, `center`, `omit`, anchor-related attrs). (env_textblock, env_abc, env_svg)
 

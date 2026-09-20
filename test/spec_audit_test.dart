@@ -586,6 +586,22 @@ soft
       expect(tab.lines.first.verbatim, 'E|--0--|');
     });
 
+    test(
+        '[§6.2-tab.braces] only `{end_of_tab}`/`{eot}` is interpreted inside '
+        'a tab; other `{…}` lines are body text', () {
+      final r = ChordPro.parse('{sot}\n{riff x2}\nE|--0--|\n{eot}');
+      final tab =
+          r.songs.single.sections.firstWhere((s) => s.kind == SectionKind.tab);
+      expect(
+        tab.lines.map((l) => l.verbatim).toList(),
+        ['{riff x2}', 'E|--0--|'],
+      );
+      expect(
+        r.songs.single.directives.map((d) => d.name).toList(),
+        ['sot', 'eot'],
+      );
+    });
+
     test('[§6.2-grid] `{sog}`/`{eog}` short forms (since 6.060)', () {
       final s = ChordPro.parseSong('{sog}\n| C . . . |\n{eog}');
       expect(s.sections.any((sec) => sec.kind == SectionKind.grid), isTrue);
@@ -679,6 +695,26 @@ real chorus
     test('[§6.5-svg] `start_of_svg` body captured as verbatim section', () {
       final s = ChordPro.parseSong('{start_of_svg}\n<svg/>\n{end_of_svg}');
       expect(s.sections.any((sec) => sec.kind == SectionKind.svg), isTrue);
+    });
+
+    test(
+        '[§6.5-delegates.braces] inside a delegated environment only its own '
+        '`{end_of_X}` is interpreted', () {
+      for (final name in ['abc', 'ly', 'svg', 'textblock', 'grille']) {
+        final r = ChordPro.parse(
+          '{start_of_$name}\n{repeat 2}\n{end_of_$name}',
+        );
+        expect(
+          r.songs.single.sections.single.lines.map((l) => l.verbatim).toList(),
+          ['{repeat 2}'],
+          reason: name,
+        );
+        expect(
+          r.songs.single.directives.map((d) => d.name).toList(),
+          ['start_of_$name', 'end_of_$name'],
+          reason: name,
+        );
+      }
     });
 
     test(
