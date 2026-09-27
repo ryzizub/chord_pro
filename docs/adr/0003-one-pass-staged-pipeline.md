@@ -31,12 +31,11 @@ Stages are tiered, and a stage imports only lower tiers:
 
 `ast` and `diagnostic` may import each other: `Metadata` reports
 diagnostics and `ParseResult` holds songs. Nothing in `lib/src/` imports
-the public barrel. `test/architecture/layer_boundaries_test.dart` enforces
-these rules.
+the public barrel.
 
 ## Consequences
 
 - A type a lower tier needs moves down. `Preprocessor` moved from the entry
   point into `source/` when this was written, because the assembler needed it.
-- A new stage directory must be added to the test's tier table, which makes
-  adding one a visible decision.
+- The tiers are a documented convention, checked in review rather than by
+  a test; a new stage directory takes a tier here in the same change.

@@ -18,8 +18,7 @@ and that is deliberate (no `package:meta`, no `collection`).
   list; a type is not public until it is listed there.
 - `lib/src/<stage>/`: one directory per pipeline stage (see Architecture).
   `lib/src/chord_pro.dart` is the `ChordPro` entry point.
-- `test/<stage>/` mirrors `lib/src/<stage>/`. `test/architecture/` enforces
-  import direction; `test/spec_audit_test.dart` and
+- `test/<stage>/` mirrors `lib/src/<stage>/`. `test/spec_audit_test.dart` and
   `test/spec_coverage_test.dart` are the spec audit (see Spec-driven workflow).
 - `chordpro-spec-checklist.md`: the spec distilled into obligations. Ground
   truth; edits ask first (hook).
@@ -128,8 +127,7 @@ source String
 
 ### Layer rules
 
-Stages form tiers, and a stage imports only stages in a lower tier.
-`test/architecture/layer_boundaries_test.dart` enforces this:
+Stages form tiers, and a stage imports only stages in a lower tier:
 
 | Tier | Stages |
 | --- | --- |
@@ -141,7 +139,6 @@ Stages form tiers, and a stage imports only stages in a lower tier.
 | 5 | `lib/src/chord_pro.dart` (entry point) |
 
 - Nothing under `lib/src/` imports the public barrel.
-- A new stage directory must be added to the test's tier table.
 - A type needed by a lower tier moves down (as `Preprocessor` moved into
   `source/`), rather than the lower tier importing upward.
 
@@ -223,7 +220,7 @@ This repo is audited against the spec rather than developed feature-first.
 2. The full suite passes with coverage at or above 85%.
 3. The ledgers agree with the code: a new directive, alias or chord quality
    is in the checklist or `non-spec-extensions.md`; a new public type is in
-   the barrel; a new stage is in the layer test.
+   the barrel.
 4. A user-visible change has an entry under `## Unreleased` in
    `CHANGELOG.md` (`### Breaking` / `### New` / `### Fixed`, no dates).
 5. The branch is pushed and a PR is open against `main` using

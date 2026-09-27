@@ -26,8 +26,5 @@ paths:
 - No mocks: there are no collaborators to mock and no `mocktail` dependency.
 - Tests in `test/spec_audit_test.dart` and `test/spec_coverage_test.dart`
   follow `.claude/rules/spec-audit.md`, not this file.
-- `test/architecture/layer_boundaries_test.dart` is the import-direction
-  gate. Fix the import, don't widen the tier table, unless the change is an
-  intended architecture change with an ADR.
 - Coverage must stay at or above 85% (CI gate). A new branch in the
   assembler gets a test that reaches it.

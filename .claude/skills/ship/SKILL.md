@@ -43,7 +43,7 @@ Go through the list in CLAUDE.md. In particular:
 
 - ledgers: new directive names in the checklist or
   `doc/reference/non-spec-extensions.md`; new public types in
-  `lib/chord_pro.dart`; new stages in the layer test;
+  `lib/chord_pro.dart`;
 - `CHANGELOG.md` has an entry under `## Unreleased` for any user-visible
   change (create the heading above the latest version if missing);
 - a changed architecture decision has an ADR in `docs/adr/`;
