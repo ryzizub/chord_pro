@@ -1,0 +1,14 @@
+# .pubignore replaces .gitignore for `dart pub publish`, so the
+# .gitignore entries are repeated here.
+.dart_tool/
+.packages
+pubspec.lock
+.tmp/
+.idea
+.DS_Store
+coverage/
+
+# Contributor and agent tooling; not part of the package.
+.claude/
+docs/
+CLAUDE.md

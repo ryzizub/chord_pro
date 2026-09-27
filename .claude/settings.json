@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "extraKnownMarketplaces": {
+    "very-good-claude-code-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "VeryGoodOpenSource/very-good-claude-code-marketplace"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "vgv-ai-flutter-plugin@very-good-claude-code-marketplace": true,
+    "vgv-wingspan@very-good-claude-code-marketplace": true
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh\"",
+            "timeout": 300
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-edits.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

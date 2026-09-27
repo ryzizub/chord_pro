@@ -20,7 +20,7 @@ export 'src/chord/chord.dart'
     show AccidentalPreference, Chord, ChordSystem, transposeRoot;
 export 'src/chord/chord_definition.dart'
     show ChordDefinition, parseChordDefinition;
-export 'src/chord_pro.dart' show ChordPro, Preprocessor;
+export 'src/chord_pro.dart' show ChordPro;
 export 'src/diagnostic/diagnostic.dart'
     show Diagnostic, DiagnosticCode, DiagnosticSeverity;
 export 'src/diagnostic/parse_result.dart' show ParseResult;
@@ -38,6 +38,7 @@ export 'src/inline/inline_token.dart'
         InlineToken,
         TextToken;
 export 'src/inline/inline_tokenizer.dart' show tokenizeInline;
+export 'src/source/preprocessor.dart' show Preprocessor;
 export 'src/source/raw_line.dart' show RawLine;
 export 'src/source/scanner.dart' show scan;
 export 'src/source/source_span.dart' show SourceSpan;
