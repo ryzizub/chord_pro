@@ -34,31 +34,40 @@ void main() {
   // Walk every section and print chords + lyrics.
   for (final section in song.sections) {
     print('\n[${section.kind.name}] ${section.label ?? ''}');
-    for (final line in section.lines) {
-      switch (line.kind) {
-        case LineKind.structured:
-          final buffer = StringBuffer();
-          for (final token in line.tokens) {
-            if (token is ChordToken) {
-              buffer.write('[${token.raw}]');
-            } else if (token is TextToken) {
-              buffer.write(token.text);
-            }
-          }
-          print('  $buffer');
-        case LineKind.comment:
-          print('  // ${line.comment}');
-        case LineKind.image:
-          print('  image: ${line.image?.src}');
-        case LineKind.layoutBreak:
-          print('  break: ${line.layoutBreak}');
-        case LineKind.verbatim:
-          print('  ${line.verbatim}');
-      }
-    }
+    section.lines.forEach(_printLine);
   }
 
   // Transpose the whole song up two semitones.
   final transposed = ChordPro.parseSong(_source).transposed(2);
   print('\nTransposed key: ${transposed.metadata.key}');
+}
+
+/// Prints one line; `line.kind` says which of its fields are populated.
+void _printLine(Line line) {
+  switch (line.kind) {
+    case LineKind.structured:
+      print('  ${_chordsAndLyrics(line)}');
+    case LineKind.comment:
+      print('  // ${line.comment}');
+    case LineKind.image:
+      print('  image: ${line.image?.src}');
+    case LineKind.layoutBreak:
+      print('  break: ${line.layoutBreak}');
+    case LineKind.verbatim:
+      print('  ${line.verbatim}');
+  }
+}
+
+/// Renders a lyric line inline, with each chord in brackets before its
+/// syllable.
+String _chordsAndLyrics(Line line) {
+  final buffer = StringBuffer();
+  for (final token in line.tokens) {
+    if (token is ChordToken) {
+      buffer.write('[${token.raw}]');
+    } else if (token is TextToken) {
+      buffer.write(token.text);
+    }
+  }
+  return buffer.toString();
 }

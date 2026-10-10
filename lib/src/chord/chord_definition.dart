@@ -135,6 +135,18 @@ const Set<String> _keywords = {
   'diagram',
 };
 
+/// Keywords that take exactly one value, mapped to the key they are
+/// collected under (`base_fret` is an alias of `base-fret`).
+const Map<String, String> _singleValueKeywords = {
+  'base-fret': 'base-fret',
+  'base_fret': 'base-fret',
+  'display': 'display',
+  'format': 'format',
+  'copy': 'copy',
+  'copyall': 'copyall',
+  'diagram': 'diagram',
+};
+
 /// Parses a `{define}` / `{chord}` value body.
 ///
 /// Returns `null` when the body is empty or names no chord — `{define: ""}`
@@ -147,15 +159,11 @@ ChordDefinition? parseChordDefinition(
   final tokens = _tokenize(value);
   if (tokens.isEmpty) return null;
 
-  var name = tokens.first;
-  var isTransposable = false;
-  if (name.length >= 2 && name.startsWith('[') && name.endsWith(']')) {
-    name = name.substring(1, name.length - 1);
-    isTransposable = true;
-  }
-  if (name.trim().isEmpty) return null;
+  final parsedName = _parseName(tokens.first);
+  if (parsedName == null) return null;
+  final name = parsedName.name;
 
-  if (isTransposable) {
+  if (parsedName.isTransposable) {
     // Per spec, bracketed-name definitions cannot carry attributes.
     return ChordDefinition(
       name: name,
@@ -165,104 +173,79 @@ ChordDefinition? parseChordDefinition(
     );
   }
 
-  int? baseFret;
+  final singles = <String, String>{};
   final frets = <int?>[];
   final fingers = <Object?>[];
   final keys = <int>[];
-  String? display;
-  String? format;
-  String? copy;
-  String? copyall;
-  String? diagram;
 
   for (var i = 1; i < tokens.length;) {
     final tok = tokens[i].toLowerCase();
+    final singleKey = _singleValueKeywords[tok];
+    if (singleKey != null) {
+      // A single-value keyword takes the next token, whatever it is; the
+      // last repeat wins.
+      if (i + 1 < tokens.length) {
+        singles[singleKey] = tokens[i + 1];
+        i += 2;
+      } else {
+        i++;
+      }
+      continue;
+    }
     switch (tok) {
-      case 'base-fret':
-      case 'base_fret':
-        if (i + 1 < tokens.length) {
-          baseFret = int.tryParse(tokens[i + 1]);
-          i += 2;
-        } else {
-          i++;
-        }
       case 'frets':
-        i++;
-        while (
-            i < tokens.length && !_keywords.contains(tokens[i].toLowerCase())) {
-          frets.add(_parseFret(tokens[i]));
-          i++;
-        }
+        final run = _valueRun(tokens, i + 1);
+        frets.addAll(run.values.map(_parseFret));
+        i = run.end;
       case 'fingers':
-        i++;
-        while (
-            i < tokens.length && !_keywords.contains(tokens[i].toLowerCase())) {
-          fingers.add(_parseFinger(tokens[i]));
-          i++;
-        }
+        final run = _valueRun(tokens, i + 1);
+        fingers.addAll(run.values.map(_parseFinger));
+        i = run.end;
       case 'keys':
-        i++;
-        while (
-            i < tokens.length && !_keywords.contains(tokens[i].toLowerCase())) {
-          final n = int.tryParse(tokens[i]);
-          if (n != null) keys.add(n);
-          i++;
-        }
-      case 'display':
-        if (i + 1 < tokens.length) {
-          display = tokens[i + 1];
-          i += 2;
-        } else {
-          i++;
-        }
-      case 'format':
-        if (i + 1 < tokens.length) {
-          format = tokens[i + 1];
-          i += 2;
-        } else {
-          i++;
-        }
-      case 'copy':
-        if (i + 1 < tokens.length) {
-          copy = tokens[i + 1];
-          i += 2;
-        } else {
-          i++;
-        }
-      case 'copyall':
-        if (i + 1 < tokens.length) {
-          copyall = tokens[i + 1];
-          i += 2;
-        } else {
-          i++;
-        }
-      case 'diagram':
-        if (i + 1 < tokens.length) {
-          diagram = tokens[i + 1];
-          i += 2;
-        } else {
-          i++;
-        }
+        final run = _valueRun(tokens, i + 1);
+        keys.addAll(run.values.map(int.tryParse).whereType<int>());
+        i = run.end;
       default:
         i++;
     }
   }
 
+  final baseFret = singles['base-fret'];
   return ChordDefinition(
     name: name,
-    baseFret: baseFret,
+    baseFret: baseFret == null ? null : int.tryParse(baseFret),
     frets: List.unmodifiable(frets),
     fingers: List.unmodifiable(fingers),
     keys: List.unmodifiable(keys),
-    display: display,
-    format: format,
-    copy: copy,
-    copyall: copyall,
-    diagram: diagram,
-    isTransposable: isTransposable,
+    display: singles['display'],
+    format: singles['format'],
+    copy: singles['copy'],
+    copyall: singles['copyall'],
+    diagram: singles['diagram'],
     raw: value,
     span: span,
   );
+}
+
+/// Reads the chord name from [token], stripping `[...]` brackets that mark
+/// a transposable definition. Returns `null` when the name is blank.
+({String name, bool isTransposable})? _parseName(String token) {
+  final isTransposable =
+      token.length >= 2 && token.startsWith('[') && token.endsWith(']');
+  final name = isTransposable ? token.substring(1, token.length - 1) : token;
+  if (name.trim().isEmpty) return null;
+  return (name: name, isTransposable: isTransposable);
+}
+
+/// Collects the tokens from [start] up to (not including) the next
+/// keyword, and the index where that run ends.
+({List<String> values, int end}) _valueRun(List<String> tokens, int start) {
+  var end = start;
+  while (
+      end < tokens.length && !_keywords.contains(tokens[end].toLowerCase())) {
+    end++;
+  }
+  return (values: tokens.sublist(start, end), end: end);
 }
 
 /// Splits [value] on whitespace, but keeps `"…"`-quoted strings as a
@@ -272,34 +255,43 @@ List<String> _tokenize(String value) {
   var i = 0;
   while (i < value.length) {
     final c = value.codeUnitAt(i);
-    if (c == 0x20 || c == 0x09) {
+    if (_isBlank(c)) {
       i++;
       continue;
     }
-    if (c == 0x22 || c == 0x27) {
-      final quote = c;
-      final start = i + 1;
-      var j = start;
-      while (j < value.length && value.codeUnitAt(j) != quote) {
-        if (value.codeUnitAt(j) == 0x5C && j + 1 < value.length) {
-          j += 2;
-          continue;
-        }
-        j++;
-      }
-      out.add(value.substring(start, j));
-      i = j < value.length ? j + 1 : j;
-      continue;
-    }
-    final start = i;
-    while (i < value.length) {
-      final cc = value.codeUnitAt(i);
-      if (cc == 0x20 || cc == 0x09) break;
-      i++;
-    }
-    out.add(value.substring(start, i));
+    final read =
+        (c == 0x22 || c == 0x27) ? _readQuoted(value, i) : _readBare(value, i);
+    out.add(read.token);
+    i = read.next;
   }
   return out;
+}
+
+bool _isBlank(int c) => c == 0x20 || c == 0x09;
+
+/// Reads a quoted token whose opening quote is at [quoteAt]. Backslash
+/// skips the next character; an unterminated quote runs to the end.
+({String token, int next}) _readQuoted(String value, int quoteAt) {
+  final quote = value.codeUnitAt(quoteAt);
+  final start = quoteAt + 1;
+  var j = start;
+  while (j < value.length && value.codeUnitAt(j) != quote) {
+    final escaped = value.codeUnitAt(j) == 0x5C && j + 1 < value.length;
+    j += escaped ? 2 : 1;
+  }
+  return (
+    token: value.substring(start, j),
+    next: j < value.length ? j + 1 : j,
+  );
+}
+
+/// Reads a whitespace-delimited token starting at [start].
+({String token, int next}) _readBare(String value, int start) {
+  var i = start;
+  while (i < value.length && !_isBlank(value.codeUnitAt(i))) {
+    i++;
+  }
+  return (token: value.substring(start, i), next: i);
 }
 
 int? _parseFret(String s) {

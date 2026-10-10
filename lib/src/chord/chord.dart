@@ -320,42 +320,39 @@ class _RootMatch {
 /// flat), and the two cannot be told apart from the root text alone.
 _RootMatch? _rootEnd(String s, {bool notesMode = false}) {
   final c0 = s.codeUnitAt(0);
-  // Letter (A-H) chord. H is German notation for B.
-  if ((c0 >= 0x41 && c0 <= 0x47) || c0 == 0x48) {
-    var i = 1;
-    if (i < s.length && _isAccidental(s.codeUnitAt(i))) {
-      i++;
-    }
-    return _RootMatch(i, ChordSystem.letter);
-  }
-  // Notes mode: lowercase a-g are letter roots (mirrors `settings.notes`).
-  // Checked before the accidental branch so that `b` is a root, not a flat.
-  if (notesMode && c0 >= 0x61 && c0 <= 0x67) {
-    var i = 1;
-    if (i < s.length && _isAccidental(s.codeUnitAt(i))) {
-      i++;
-    }
-    return _RootMatch(i, ChordSystem.letter);
+  // Letter (A-H) chord; H is German notation for B. In notes mode,
+  // lowercase a-g are letter roots too (mirrors `settings.notes`). Checked
+  // before the accidental branch so that `b` is a root, not a flat.
+  if (_isLetterRoot(c0, notesMode: notesMode)) {
+    final hasAccidental = s.length > 1 && _isAccidental(s.codeUnitAt(1));
+    return _RootMatch(hasAccidental ? 2 : 1, ChordSystem.letter);
   }
   // Nashville: optional accidental then digit 1..7.
   if (_isAccidental(c0)) {
-    if (s.length >= 2 && _isNashvilleDigit(s.codeUnitAt(1))) {
-      return const _RootMatch(2, ChordSystem.nashville);
-    }
-    return null;
+    return s.length >= 2 && _isNashvilleDigit(s.codeUnitAt(1))
+        ? const _RootMatch(2, ChordSystem.nashville)
+        : null;
   }
   if (_isNashvilleDigit(c0)) {
     return const _RootMatch(1, ChordSystem.nashville);
   }
   // Roman: sequence of I/V upper- or lower-case.
   if (_isRomanChar(c0)) {
-    var i = 1;
-    while (i < s.length && _isRomanChar(s.codeUnitAt(i))) {
-      i++;
-    }
-    return _RootMatch(i, ChordSystem.roman);
+    return _RootMatch(_romanRunEnd(s), ChordSystem.roman);
   }
   return null;
+}
+
+bool _isLetterRoot(int c, {required bool notesMode}) =>
+    (c >= 0x41 && c <= 0x48) || (notesMode && c >= 0x61 && c <= 0x67);
+
+/// The end of the run of Roman-numeral characters at the start of [s].
+int _romanRunEnd(String s) {
+  var i = 1;
+  while (i < s.length && _isRomanChar(s.codeUnitAt(i))) {
+    i++;
+  }
+  return i;
 }
 
 bool _isNashvilleDigit(int c) => c >= 0x31 && c <= 0x37; // 1..7

@@ -52,13 +52,43 @@ ParseResult assemble(
       ? const <String>{}
       : {for (final s in selectors) s.toLowerCase()};
   final lines = scan(_applyPreprocessors(source, preprocessors));
-  final brackets = _AltBrackets.from(altBrackets);
+  final assembler = _Assembler(
+    activeSelectors: activeSelectors,
+    notesMode: notesMode,
+    strict: strict,
+    brackets: _AltBrackets.from(altBrackets),
+  );
+  lines.forEach(assembler.addLine);
+  assembler.finishSong();
+  return ParseResult(
+    songs: assembler.songs,
+    diagnostics: assembler.diagnostics,
+  );
+}
+
+/// The single forward pass behind [assemble].
+///
+/// Holds the per-pass and per-song state; [addLine] dispatches each
+/// [RawLine] to one method per branch, in the load-bearing order of
+/// `.claude/rules/assembler.md` (ADR 0009).
+class _Assembler {
+  _Assembler({
+    required this.activeSelectors,
+    required this.notesMode,
+    required this.strict,
+    required this.brackets,
+  });
+
+  final Set<String> activeSelectors;
+  final bool notesMode;
+  final bool strict;
+  final _AltBrackets? brackets;
   final diagnostics = <Diagnostic>[];
   final songs = <Song>[];
 
-  var directives = <Directive>[];
-  var sections = <Section>[];
-  var chordDefs = <ChordDefinition>[];
+  List<Directive> directives = <Directive>[];
+  List<Section> sections = <Section>[];
+  List<ChordDefinition> chordDefs = <ChordDefinition>[];
   _OpenSection? open;
   // Set when a `start_of_X-selector(!)` directive doesn't apply for the
   // current selector set: every line until the matching `end_of_X` is
@@ -74,10 +104,10 @@ ParseResult assemble(
   SourceSpan? skipStartSpan;
   // Nesting depth inside the suppressed section: a same-kind start
   // directive inside it must not be closed by the first inner end.
-  var skipDepth = 0;
+  int skipDepth = 0;
   // Set by a preceding `{ns toc=no}` (or false/0) — applied to the
   // *next* song that opens. Reset after consumption.
-  var pendingTocSuppressed = false;
+  bool pendingTocSuppressed = false;
   // Set by a `{titles}` directive in the current song.
   TitlesAlignment? titlesAlignment;
   // Set by `{diagrams}` (or `{g}` alias) in the current song.
@@ -89,51 +119,39 @@ ParseResult assemble(
   // consumed silently instead.
   _StartKind? recallAutoClosed;
 
-  void closeLoose() {
-    if (open != null && open!.kind == SectionKind.loose) {
-      final s = open!.finish();
-      if (s != null) sections.add(s);
-      open = null;
+  void addLine(RawLine line) {
+    if (line.isFileComment) return;
+
+    final directive = parseDirectiveLine(line);
+
+    if (_addSuppressedLine(line, directive)) return;
+    if (_addOpenVerbatimLine(line, directive)) return;
+
+    if (directive != null) {
+      _addDirective(directive);
+      return;
     }
+
+    // Non-directive line: either verbatim (inside tab/grid/abc/ly) or
+    // structured lyric/chord content. Blank lines outside any open
+    // section are dropped.
+    if (open == null) {
+      if (line.isBlank) return;
+      open = _OpenSection(
+        kind: SectionKind.loose,
+        startSpan: line.span,
+        notesMode: notesMode,
+        altBrackets: brackets,
+      );
+    }
+    open!.addLine(line);
   }
 
+  /// Flushes all per-song state into a [Song]. New per-song state must be
+  /// reset here, or it leaks into the next `{new_song}`.
   void finishSong() {
-    if (skipUntilEnd != null) {
-      diagnostics.add(
-        Diagnostic(
-          severity: DiagnosticSeverity.warning,
-          code: DiagnosticCode.unterminatedSuppressedSection,
-          message: 'Unterminated selector-suppressed '
-              '${skipUntilEnd!.kind.name} section; everything up to here '
-              'was suppressed.',
-          span:
-              skipStartSpan ?? const SourceSpan(line: 1, column: 1, length: 0),
-        ),
-      );
-      skipUntilEnd = null;
-      skipStartSpan = null;
-      skipDepth = 0;
-    }
-    if (skipOpen != null) {
-      final s = skipOpen!.finish();
-      if (s != null) sections.add(s);
-      skipOpen = null;
-    }
-    if (open != null) {
-      if (open!.kind != SectionKind.loose) {
-        diagnostics.add(
-          Diagnostic(
-            severity: DiagnosticSeverity.warning,
-            code: DiagnosticCode.unterminatedSection,
-            message: 'Unterminated ${open!.kind.name} section at end of song.',
-            span: open!.startSpan,
-          ),
-        );
-      }
-      final s = open!.finish();
-      if (s != null) sections.add(s);
-      open = null;
-    }
+    _closeSuppressedAtEndOfSong();
+    _closeOpenAtEndOfSong();
     final metadata = reduceMetadata(
       _expandMeta(directives, diagnostics),
       includeSelected: activeSelectors,
@@ -178,398 +196,451 @@ ParseResult assemble(
     chordDefs = <ChordDefinition>[];
   }
 
-  for (final line in lines) {
-    if (line.isFileComment) continue;
+  void _closeSuppressedAtEndOfSong() {
+    if (skipUntilEnd != null) {
+      diagnostics.add(
+        Diagnostic(
+          severity: DiagnosticSeverity.warning,
+          code: DiagnosticCode.unterminatedSuppressedSection,
+          message: 'Unterminated selector-suppressed '
+              '${skipUntilEnd!.kind.name} section; everything up to here '
+              'was suppressed.',
+          span:
+              skipStartSpan ?? const SourceSpan(line: 1, column: 1, length: 0),
+        ),
+      );
+      skipUntilEnd = null;
+      skipStartSpan = null;
+      skipDepth = 0;
+    }
+    if (skipOpen != null) {
+      final s = skipOpen!.finish();
+      if (s != null) sections.add(s);
+      skipOpen = null;
+    }
+  }
 
-    final directive = parseDirectiveLine(line);
+  void _closeOpenAtEndOfSong() {
+    if (open == null) return;
+    if (open!.kind != SectionKind.loose) {
+      diagnostics.add(
+        Diagnostic(
+          severity: DiagnosticSeverity.warning,
+          code: DiagnosticCode.unterminatedSection,
+          message: 'Unterminated ${open!.kind.name} section at end of song.',
+          span: open!.startSpan,
+        ),
+      );
+    }
+    _finishOpen();
+  }
 
+  /// Finishes the open section, which must be non-null, and appends it to
+  /// `sections`.
+  void _finishOpen([SourceSpan? endSpan]) {
+    final s = open!.finish(endSpan);
+    if (s != null) sections.add(s);
+    open = null;
+  }
+
+  void _closeLoose() {
+    if (open != null && open!.kind == SectionKind.loose) {
+      _finishOpen();
+    }
+  }
+
+  /// Ends the selector-suppressed section at its matching end directive.
+  void _endSuppressed(SourceSpan endSpan) {
+    skipUntilEnd = null;
+    skipStartSpan = null;
+    final s = skipOpen?.finish(endSpan);
+    if (s != null) sections.add(s);
+    skipOpen = null;
+  }
+
+  /// Handles [line] when it falls inside a selector-suppressed section.
+  /// Returns `false` when there is no such section, or when [line] is a
+  /// song boundary that ends it.
+  bool _addSuppressedLine(RawLine line, Directive? directive) {
     // Inside a selector-skipped section: consume until the matching end
     // directive arrives. Every directive is still appended to the
     // directive stream so that `Song.directives` is lossless — except in
     // a verbatim environment, where the body holds no directives to
-    // begin with (see the two blocks below).
+    // begin with (see [_addSuppressedVerbatimLine]).
     final pending = skipUntilEnd;
-    if (pending != null && _isVerbatimKind(pending.kind)) {
-      // A suppressed verbatim environment obeys the same rule as an open
-      // one (see below): only the matching end directive is a directive,
-      // so nothing in the body reaches the directive stream — not even a
-      // song boundary. Nesting cannot occur, since an inner
-      // `{start_of_X}` is body text too. The body itself is still kept
-      // on the suppressed section (issue #36), just as verbatim lines.
-      if (directive != null &&
-          _sameSection(_endKindOf(directive.name), pending)) {
-        directives.add(directive);
-        skipUntilEnd = null;
-        skipStartSpan = null;
-        final s = skipOpen?.finish(directive.span);
-        if (s != null) sections.add(s);
-        skipOpen = null;
-      } else {
-        skipOpen?.addLine(line);
-      }
-      continue;
+    if (pending == null) return false;
+    if (_isVerbatimKind(pending.kind)) {
+      _addSuppressedVerbatimLine(line, directive, pending);
+      return true;
     }
     // A song boundary is structural and is never conditional, so it ends
     // the suppression rather than being swallowed by it. Falling through
-    // (instead of `continue`) hands the directive to the `{new_song}`
-    // branch below, and `finishSong()` reports the unterminated section.
-    final isSongBoundary = directive != null &&
-        (directive.name == 'new_song' || directive.name == 'ns');
-    if (pending != null && !isSongBoundary) {
-      if (directive != null) {
-        directives.add(directive);
-        if (_sameSection(_startKindOf(directive.name), pending)) {
-          // Nested section of the same kind: it must be closed before the
-          // suppressed one is.
-          skipDepth++;
-        } else if (_sameSection(_endKindOf(directive.name), pending)) {
-          if (skipDepth > 0) {
-            skipDepth--;
-          } else {
-            skipUntilEnd = null;
-            skipStartSpan = null;
-            final s = skipOpen?.finish(directive.span);
-            if (s != null) sections.add(s);
-            skipOpen = null;
-          }
-        }
-        continue;
-      }
-      // A body line of the suppressed section. Directives inside the
-      // range are deliberately not turned into lines: they are already
-      // in the directive stream, and re-running them here would apply
-      // song-level settings the selector said to skip.
-      skipOpen?.addLine(line);
-      continue;
+    // (instead of consuming the line) hands the directive to the
+    // `{new_song}` branch of [_addDirective], and `finishSong()` reports
+    // the unterminated section.
+    if (directive != null && _isSongBoundary(directive.name)) return false;
+    if (directive != null) {
+      _addSuppressedDirective(directive, pending);
+      return true;
     }
+    // A body line of the suppressed section. Directives inside the
+    // range are deliberately not turned into lines: they are already
+    // in the directive stream, and re-running them here would apply
+    // song-level settings the selector said to skip.
+    skipOpen?.addLine(line);
+    return true;
+  }
 
+  void _addSuppressedVerbatimLine(
+    RawLine line,
+    Directive? directive,
+    _StartKind pending,
+  ) {
+    // A suppressed verbatim environment obeys the same rule as an open
+    // one (see [_addOpenVerbatimLine]): only the matching end directive
+    // is a directive, so nothing in the body reaches the directive
+    // stream — not even a song boundary. Nesting cannot occur, since an
+    // inner `{start_of_X}` is body text too. The body itself is still
+    // kept on the suppressed section (issue #36), just as verbatim lines.
+    if (directive != null &&
+        _sameSection(_endKindOf(directive.name), pending)) {
+      directives.add(directive);
+      _endSuppressed(directive.span);
+    } else {
+      skipOpen?.addLine(line);
+    }
+  }
+
+  void _addSuppressedDirective(Directive directive, _StartKind pending) {
+    directives.add(directive);
+    if (_sameSection(_startKindOf(directive.name), pending)) {
+      // Nested section of the same kind: it must be closed before the
+      // suppressed one is.
+      skipDepth++;
+    } else if (_sameSection(_endKindOf(directive.name), pending)) {
+      if (skipDepth > 0) {
+        skipDepth--;
+      } else {
+        _endSuppressed(directive.span);
+      }
+    }
+  }
+
+  /// Adds [line] to an open verbatim section unless it is that section's
+  /// end directive. Returns whether [line] was consumed.
+  bool _addOpenVerbatimLine(RawLine line, Directive? directive) {
     // Inside a verbatim environment the body is printed as-is, so only
     // the matching `end_of_X` is interpreted; every other line — brace
     // leading or not — is body text (Song.pm:622 for tab, Song.pm:631
     // for the delegated environments, both of which test for their own
     // end directive before the generic directive branch is reached).
     final openVerbatim = open;
-    if (openVerbatim != null && openVerbatim.isVerbatim) {
-      final closes = directive != null &&
-          _sameSection(
-            _endKindOf(directive.name),
-            _StartKind(openVerbatim.kind, openVerbatim.customKind),
-          );
-      if (!closes) {
-        openVerbatim.addLine(line);
-        continue;
-      }
+    if (openVerbatim == null || !openVerbatim.isVerbatim) return false;
+    final closes = directive != null &&
+        _sameSection(
+          _endKindOf(directive.name),
+          _StartKind(openVerbatim.kind, openVerbatim.customKind),
+        );
+    if (closes) return false;
+    openVerbatim.addLine(line);
+    return true;
+  }
+
+  void _addDirective(Directive directive) {
+    // Every directive lands in the stream before any branch decides what
+    // else to do with it: `Song.directives` is lossless (ADR 0004).
+    directives.add(directive);
+
+    // Song boundary always applies regardless of selectors — splitting
+    // songs is structural, not conditional. The optional `toc=` attr
+    // (ChordPro 6.040) is captured for the *next* song.
+    if (_isSongBoundary(directive.name)) {
+      finishSong();
+      final attrs = parseKv(directive.value ?? '');
+      pendingTocSuppressed = _isFalsy(attrs['toc']);
+      return;
     }
 
-    if (directive != null) {
-      directives.add(directive);
+    if (_applySongSetting(directive)) return;
 
-      // Song boundary always applies regardless of selectors — splitting
-      // songs is structural, not conditional. The optional `toc=` attr
-      // (ChordPro 6.040) is captured for the *next* song.
-      if (directive.name == 'new_song' || directive.name == 'ns') {
-        finishSong();
-        final attrs = parseKv(directive.value ?? '');
-        pendingTocSuppressed = _isFalsy(attrs['toc']);
-        continue;
-      }
+    // Selector gate. Per spec, "all directives can be conditionally
+    // selected … selection applies to everything in the section, up to
+    // and including the final section end directive."
+    if (!_selectorApplies(directive, activeSelectors)) {
+      _suppress(directive);
+      return;
+    }
 
-      // Title-block alignment hint (legacy `{titles}` directive,
-      // Song.pm:2204).
-      if (directive.name == 'titles' && directive.value != null) {
-        titlesAlignment = parseTitlesAlignment(directive.value!);
-        continue;
-      }
+    _addApplyingDirective(directive);
+  }
 
-      // Diagrams setting. `{g}` is the spec-listed shorthand for
-      // `{diagrams}` per Song.pm:1339.
-      if (directive.name == 'diagrams' || directive.name == 'g') {
-        diagrams = DiagramsSetting.fromValue(directive.value);
-        continue;
-      }
+  /// Applies a song-level setting directive. Returns whether [directive]
+  /// was one.
+  bool _applySongSetting(Directive directive) {
+    final name = directive.name;
+    // Title-block alignment hint (legacy `{titles}` directive,
+    // Song.pm:2204).
+    if (name == 'titles' && directive.value != null) {
+      titlesAlignment = parseTitlesAlignment(directive.value!);
+      return true;
+    }
 
-      // Legacy `{no_grid}` / `{ng}` — obsolete since 6.020 but still
-      // accepted; equivalent to `{diagrams: off}` (Song.pm:1339).
-      if (directive.name == 'no_grid' || directive.name == 'ng') {
-        diagrams = const DiagramsSetting(enabled: false);
-        continue;
-      }
+    // Diagrams setting. `{g}` is the spec-listed shorthand for
+    // `{diagrams}` per Song.pm:1339.
+    if (name == 'diagrams' || name == 'g') {
+      diagrams = DiagramsSetting.fromValue(directive.value);
+      return true;
+    }
 
-      // Selector gate. Per spec, "all directives can be conditionally
-      // selected … selection applies to everything in the section, up to
-      // and including the final section end directive."
-      final applies = _selectorApplies(directive, activeSelectors);
-      if (!applies) {
-        final startKind = _startKindOf(directive.name);
-        if (startKind != null) {
-          skipUntilEnd = startKind;
-          skipStartSpan = directive.span;
-          skipDepth = 0;
-          // The body is captured rather than dropped, so the suppressed
-          // section is opened exactly as an applying one would be — same
-          // auto-close of an enclosing section, same attribute parsing,
-          // same tokenization — and only the flag differs.
-          if (open != null && open!.kind != SectionKind.loose) {
-            diagnostics.add(
-              Diagnostic(
-                severity: DiagnosticSeverity.warning,
-                code: DiagnosticCode.nestedSection,
-                message: 'Nested or unclosed ${open!.kind.name} section; '
-                    'auto-closing before ${directive.name}.',
-                span: directive.span,
-              ),
-            );
-            final s = open!.finish();
-            if (s != null) sections.add(s);
-            open = null;
-          }
-          closeLoose();
-          recallAutoClosed = null;
-          final defaultKey =
-              startKind.kind == SectionKind.grid ? 'shape' : 'label';
-          final attrs = parseKv(directive.value ?? '', defaultKey: defaultKey);
-          final label = attrs.remove('label');
-          skipOpen = _OpenSection(
-            kind: startKind.kind,
-            customKind: startKind.customKind,
-            label: label,
-            attributes: Map<String, String>.unmodifiable(attrs),
-            startSpan: directive.span,
-            notesMode: notesMode,
-            altBrackets: brackets,
-            isSelectorSuppressed: true,
-          );
-        }
-        // Non-section directives are simply suppressed; metadata and
-        // formatting reducers already filter selector-tagged directives
-        // independently from the directive stream.
-        continue;
-      }
+    // Legacy `{no_grid}` / `{ng}` — obsolete since 6.020 but still
+    // accepted; equivalent to `{diagrams: off}` (Song.pm:1339).
+    if (name == 'no_grid' || name == 'ng') {
+      diagrams = const DiagramsSetting(enabled: false);
+      return true;
+    }
+    return false;
+  }
 
-      // Chord definitions.
-      if (directive.name == 'define' || directive.name == 'chord') {
-        final value = directive.value;
-        if (value != null && value.isNotEmpty) {
-          final def = parseChordDefinition(value, span: directive.span);
-          if (def != null) {
-            chordDefs.add(def);
-          } else {
-            diagnostics.add(
-              Diagnostic(
-                severity: DiagnosticSeverity.warning,
-                code: DiagnosticCode.malformedChordDefinition,
-                message: 'Malformed {${directive.name}} body.',
-                span: directive.span,
-              ),
-            );
-          }
-        }
-        continue;
-      }
+  /// Handles a directive whose selector does not apply.
+  void _suppress(Directive directive) {
+    // Non-section directives are simply suppressed; metadata and
+    // formatting reducers already filter selector-tagged directives
+    // independently from the directive stream.
+    final startKind = _startKindOf(directive.name);
+    if (startKind == null) return;
+    skipUntilEnd = startKind;
+    skipStartSpan = directive.span;
+    skipDepth = 0;
+    // The body is captured rather than dropped, so the suppressed
+    // section is opened exactly as an applying one would be — same
+    // auto-close of an enclosing section, same attribute parsing,
+    // same tokenization — and only the flag differs.
+    skipOpen = _startSection(startKind, directive, isSelectorSuppressed: true);
+  }
 
-      // Chorus recall: bare `{chorus}` (no value) and the labelled
-      // forms `{chorus: Final}` / `{chorus: label="Final"}` per
-      // ChordPro 6.060 (Song.pm:1755).
-      if (directive.name == 'chorus') {
-        // A recall is a section of its own, so an open section has to be
-        // closed first — otherwise the recall would be appended to
-        // `sections` ahead of the section it appeared inside.
-        if (open != null && open!.kind != SectionKind.loose) {
-          diagnostics.add(
-            Diagnostic(
-              severity: DiagnosticSeverity.warning,
-              code: DiagnosticCode.chorusRecallInsideSection,
-              message: '{chorus} recall inside an open ${open!.kind.name} '
-                  'section; auto-closing before the recall.',
-              span: directive.span,
-            ),
-          );
-          recallAutoClosed = _StartKind(open!.kind, open!.customKind);
-          final s = open!.finish();
-          if (s != null) sections.add(s);
-          open = null;
-        }
-        closeLoose();
-        final attrs = parseKv(directive.value ?? '', defaultKey: 'label');
-        final label = attrs.remove('label');
-        sections.add(
-          Section(
-            kind: SectionKind.chorus,
-            lines: const [],
-            span: directive.span,
-            isChorusRecall: true,
-            label: label,
-            attributes: Map<String, String>.unmodifiable(attrs),
-          ),
-        );
-        continue;
-      }
+  void _addApplyingDirective(Directive directive) {
+    final name = directive.name;
 
-      final startKind = _startKindOf(directive.name);
-      if (startKind != null) {
-        if (open != null && open!.kind != SectionKind.loose) {
-          diagnostics.add(
-            Diagnostic(
-              severity: DiagnosticSeverity.warning,
-              code: DiagnosticCode.nestedSection,
-              message: 'Nested or unclosed ${open!.kind.name} section; '
-                  'auto-closing before ${directive.name}.',
-              span: directive.span,
-            ),
-          );
-          final s = open!.finish();
-          if (s != null) sections.add(s);
-          open = null;
-        }
-        closeLoose();
-        // Parse the start-directive body as KV attributes per spec
-        // (Song.pm:1382). The bare-value form
-        // `{start_of_verse: Verse 1}` is treated as `label="Verse 1"`;
-        // for `start_of_grid` the legacy form `{sog: 4x4}` is treated
-        // as `shape="4x4"`. An explicit `label="X"` / `shape="X"`
-        // always wins.
-        final defaultKey =
-            startKind.kind == SectionKind.grid ? 'shape' : 'label';
-        final attrs = parseKv(directive.value ?? '', defaultKey: defaultKey);
-        final label = attrs.remove('label');
-        recallAutoClosed = null;
-        open = _OpenSection(
-          kind: startKind.kind,
-          customKind: startKind.customKind,
-          label: label,
-          attributes: Map<String, String>.unmodifiable(attrs),
-          startSpan: directive.span,
-          notesMode: notesMode,
-          altBrackets: brackets,
-        );
-        continue;
-      }
+    // Chord definitions.
+    if (name == 'define' || name == 'chord') {
+      _addChordDefinition(directive);
+      return;
+    }
 
-      final commentStyle = _commentStyleOf(directive.name);
-      if (commentStyle != null) {
-        final value = directive.value ?? '';
-        open ??= _OpenSection(
-          kind: SectionKind.loose,
-          startSpan: directive.span,
-          notesMode: notesMode,
-          altBrackets: brackets,
-        );
-        open!.addCommentLine(
-          text: value,
-          style: commentStyle,
+    // Chorus recall: bare `{chorus}` (no value) and the labelled
+    // forms `{chorus: Final}` / `{chorus: label="Final"}` per
+    // ChordPro 6.060 (Song.pm:1755).
+    if (name == 'chorus') {
+      _addChorusRecall(directive);
+      return;
+    }
+
+    final startKind = _startKindOf(name);
+    if (startKind != null) {
+      open = _startSection(startKind, directive);
+      return;
+    }
+
+    final commentStyle = _commentStyleOf(name);
+    if (commentStyle != null) {
+      _looseSection(directive.span).addCommentLine(
+        text: directive.value ?? '',
+        style: commentStyle,
+        span: directive.span,
+      );
+      return;
+    }
+
+    final layoutBreak = _layoutBreakOf(name);
+    if (layoutBreak != null) {
+      _looseSection(directive.span)
+          .addLayoutBreak(kind: layoutBreak, span: directive.span);
+      return;
+    }
+
+    if (name == 'image') {
+      _addImage(directive);
+      return;
+    }
+
+    final endKind = _endKindOf(name);
+    if (endKind != null) {
+      _endSection(directive, endKind);
+      return;
+    }
+
+    // Other directive — not a section boundary. It already landed in
+    // `directives` in [_addDirective] for metadata reduction and
+    // round-tripping.
+  }
+
+  void _addChordDefinition(Directive directive) {
+    final value = directive.value;
+    if (value == null || value.isEmpty) return;
+    final def = parseChordDefinition(value, span: directive.span);
+    if (def != null) {
+      chordDefs.add(def);
+    } else {
+      diagnostics.add(
+        Diagnostic(
+          severity: DiagnosticSeverity.warning,
+          code: DiagnosticCode.malformedChordDefinition,
+          message: 'Malformed {${directive.name}} body.',
           span: directive.span,
-        );
-        continue;
-      }
-
-      final layoutBreak = _layoutBreakOf(directive.name);
-      if (layoutBreak != null) {
-        open ??= _OpenSection(
-          kind: SectionKind.loose,
-          startSpan: directive.span,
-          notesMode: notesMode,
-          altBrackets: brackets,
-        );
-        open!.addLayoutBreak(kind: layoutBreak, span: directive.span);
-        continue;
-      }
-
-      if (directive.name == 'image') {
-        final value = directive.value;
-        if (value == null || value.isEmpty) {
-          diagnostics.add(
-            Diagnostic(
-              severity: DiagnosticSeverity.warning,
-              code: DiagnosticCode.emptyImage,
-              message: 'Empty {image} directive.',
-              span: directive.span,
-            ),
-          );
-          continue;
-        }
-        final image = parseImageDirective(value, span: directive.span);
-        if (image == null) {
-          diagnostics.add(
-            Diagnostic(
-              severity: DiagnosticSeverity.warning,
-              code: DiagnosticCode.malformedImage,
-              message: 'Malformed {image} directive.',
-              span: directive.span,
-            ),
-          );
-          continue;
-        }
-        open ??= _OpenSection(
-          kind: SectionKind.loose,
-          startSpan: directive.span,
-          notesMode: notesMode,
-          altBrackets: brackets,
-        );
-        open!.addImageLine(image: image, span: directive.span);
-        continue;
-      }
-
-      final endKind = _endKindOf(directive.name);
-      if (endKind != null) {
-        final autoClosed = recallAutoClosed;
-        if (autoClosed != null && _sameSection(endKind, autoClosed)) {
-          recallAutoClosed = null;
-          continue;
-        }
-        if (open == null || open!.kind == SectionKind.loose) {
-          diagnostics.add(
-            Diagnostic(
-              severity: DiagnosticSeverity.warning,
-              code: DiagnosticCode.strayEnd,
-              message: 'Stray ${directive.name} without matching start.',
-              span: directive.span,
-            ),
-          );
-          continue;
-        }
-        if (open!.kind != endKind.kind ||
-            (endKind.kind == SectionKind.custom &&
-                open!.customKind != endKind.customKind)) {
-          diagnostics.add(
-            Diagnostic(
-              severity: DiagnosticSeverity.warning,
-              code: DiagnosticCode.mismatchedEnd,
-              message: 'Mismatched end: expected end of ${open!.kind.name}, '
-                  'got ${directive.name}.',
-              span: directive.span,
-            ),
-          );
-        }
-        final s = open!.finish(directive.span);
-        if (s != null) sections.add(s);
-        open = null;
-        continue;
-      }
-
-      // Other directive — not a section boundary. It already landed in
-      // `directives` above for metadata reduction and round-tripping.
-      continue;
+        ),
+      );
     }
+  }
 
-    // Non-directive line: either verbatim (inside tab/grid/abc/ly) or
-    // structured lyric/chord content. Blank lines outside any open
-    // section are dropped.
-    if (open == null) {
-      if (line.isBlank) continue;
-      open = _OpenSection(
+  void _addChorusRecall(Directive directive) {
+    // A recall is a section of its own, so an open section has to be
+    // closed first — otherwise the recall would be appended to
+    // `sections` ahead of the section it appeared inside.
+    if (open != null && open!.kind != SectionKind.loose) {
+      diagnostics.add(
+        Diagnostic(
+          severity: DiagnosticSeverity.warning,
+          code: DiagnosticCode.chorusRecallInsideSection,
+          message: '{chorus} recall inside an open ${open!.kind.name} '
+              'section; auto-closing before the recall.',
+          span: directive.span,
+        ),
+      );
+      recallAutoClosed = _StartKind(open!.kind, open!.customKind);
+      _finishOpen();
+    }
+    _closeLoose();
+    final attrs = parseKv(directive.value ?? '', defaultKey: 'label');
+    final label = attrs.remove('label');
+    sections.add(
+      Section(
+        kind: SectionKind.chorus,
+        lines: const [],
+        span: directive.span,
+        isChorusRecall: true,
+        label: label,
+        attributes: Map<String, String>.unmodifiable(attrs),
+      ),
+    );
+  }
+
+  /// Closes whatever section is open and returns a new section of
+  /// [startKind] opened by [directive]. Shared by applying and
+  /// selector-suppressed start directives.
+  _OpenSection _startSection(
+    _StartKind startKind,
+    Directive directive, {
+    bool isSelectorSuppressed = false,
+  }) {
+    if (open != null && open!.kind != SectionKind.loose) {
+      diagnostics.add(
+        Diagnostic(
+          severity: DiagnosticSeverity.warning,
+          code: DiagnosticCode.nestedSection,
+          message: 'Nested or unclosed ${open!.kind.name} section; '
+              'auto-closing before ${directive.name}.',
+          span: directive.span,
+        ),
+      );
+      _finishOpen();
+    }
+    _closeLoose();
+    // Parse the start-directive body as KV attributes per spec
+    // (Song.pm:1382). The bare-value form
+    // `{start_of_verse: Verse 1}` is treated as `label="Verse 1"`;
+    // for `start_of_grid` the legacy form `{sog: 4x4}` is treated
+    // as `shape="4x4"`. An explicit `label="X"` / `shape="X"`
+    // always wins.
+    final defaultKey = startKind.kind == SectionKind.grid ? 'shape' : 'label';
+    final attrs = parseKv(directive.value ?? '', defaultKey: defaultKey);
+    final label = attrs.remove('label');
+    recallAutoClosed = null;
+    return _OpenSection(
+      kind: startKind.kind,
+      customKind: startKind.customKind,
+      label: label,
+      attributes: Map<String, String>.unmodifiable(attrs),
+      startSpan: directive.span,
+      notesMode: notesMode,
+      altBrackets: brackets,
+      isSelectorSuppressed: isSelectorSuppressed,
+    );
+  }
+
+  /// The open section, or a new loose one starting at [span] when none is
+  /// open.
+  _OpenSection _looseSection(SourceSpan span) => open ??= _OpenSection(
         kind: SectionKind.loose,
-        startSpan: line.span,
+        startSpan: span,
         notesMode: notesMode,
         altBrackets: brackets,
       );
+
+  void _addImage(Directive directive) {
+    final value = directive.value;
+    if (value == null || value.isEmpty) {
+      diagnostics.add(
+        Diagnostic(
+          severity: DiagnosticSeverity.warning,
+          code: DiagnosticCode.emptyImage,
+          message: 'Empty {image} directive.',
+          span: directive.span,
+        ),
+      );
+      return;
     }
-    open!.addLine(line);
+    final image = parseImageDirective(value, span: directive.span);
+    if (image == null) {
+      diagnostics.add(
+        Diagnostic(
+          severity: DiagnosticSeverity.warning,
+          code: DiagnosticCode.malformedImage,
+          message: 'Malformed {image} directive.',
+          span: directive.span,
+        ),
+      );
+      return;
+    }
+    _looseSection(directive.span)
+        .addImageLine(image: image, span: directive.span);
   }
 
-  finishSong();
-
-  return ParseResult(songs: songs, diagnostics: diagnostics);
+  void _endSection(Directive directive, _StartKind endKind) {
+    final autoClosed = recallAutoClosed;
+    if (autoClosed != null && _sameSection(endKind, autoClosed)) {
+      recallAutoClosed = null;
+      return;
+    }
+    if (open == null || open!.kind == SectionKind.loose) {
+      diagnostics.add(
+        Diagnostic(
+          severity: DiagnosticSeverity.warning,
+          code: DiagnosticCode.strayEnd,
+          message: 'Stray ${directive.name} without matching start.',
+          span: directive.span,
+        ),
+      );
+      return;
+    }
+    if (open!.kind != endKind.kind ||
+        (endKind.kind == SectionKind.custom &&
+            open!.customKind != endKind.customKind)) {
+      diagnostics.add(
+        Diagnostic(
+          severity: DiagnosticSeverity.warning,
+          code: DiagnosticCode.mismatchedEnd,
+          message: 'Mismatched end: expected end of ${open!.kind.name}, '
+              'got ${directive.name}.',
+          span: directive.span,
+        ),
+      );
+    }
+    _finishOpen(directive.span);
+  }
 }
+
+/// Whether [name] is the `{new_song}` song boundary or its `{ns}` alias.
+bool _isSongBoundary(String name) => name == 'new_song' || name == 'ns';
 
 class _StartKind {
   _StartKind(this.kind, [this.customKind]);

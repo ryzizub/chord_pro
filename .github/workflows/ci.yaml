@@ -42,6 +42,18 @@ jobs:
   license-check:
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/license_check.yml@v1
 
+  cognitive-complexity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      # Targets the whole repo: without one the scanner only covers lib/,
+      # and test/ and example/ would go unchecked.
+      - name: Gate cognitive complexity
+        run: dart run cognitive_complexity@2.0.0 --fail-threshold 15 .
+
   publish-dry-run:
     runs-on: ubuntu-latest
     steps:

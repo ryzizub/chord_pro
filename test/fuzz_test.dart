@@ -92,6 +92,23 @@ String _randomSource(Random random) {
   return buffer.toString();
 }
 
+/// Touches every accessor and transform on [song]; none may throw.
+void _expectAccessorsSafe(Song song) {
+  expect(song.metadata.isEmpty, isA<bool>());
+  for (final section in song.sections) {
+    section
+      ..gridAttributes
+      ..textblockAttributes;
+    for (final line in section.lines) {
+      expect(line.span.line, greaterThan(0));
+      expect(line.span.column, greaterThan(0));
+    }
+  }
+  // And so must the transforms.
+  expect(() => song.transposed(7), returnsNormally);
+  expect(() => song.transposed(-5), returnsNormally);
+}
+
 void main() {
   group('parsing is total', () {
     test('random input never throws and always yields a song', () {
@@ -111,21 +128,7 @@ void main() {
           reason: 'seed $seed, iteration $i, source ${source.codeUnits}',
         );
         // Every downstream accessor must be safe on whatever came back.
-        for (final song in result.songs) {
-          expect(song.metadata.isEmpty, isA<bool>());
-          for (final section in song.sections) {
-            section
-              ..gridAttributes
-              ..textblockAttributes;
-            for (final line in section.lines) {
-              expect(line.span.line, greaterThan(0));
-              expect(line.span.column, greaterThan(0));
-            }
-          }
-          // And so must the transforms.
-          expect(() => song.transposed(7), returnsNormally);
-          expect(() => song.transposed(-5), returnsNormally);
-        }
+        result.songs.forEach(_expectAccessorsSafe);
       }
     });
 

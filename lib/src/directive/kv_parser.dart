@@ -24,47 +24,57 @@ Map<String, String> parseKv(
   var i = 0;
   var first = true;
   while (i < input.length) {
-    final ch = input.codeUnitAt(i);
-    if (ch == 0x20 || ch == 0x09) {
+    if (_isBlank(input.codeUnitAt(i))) {
       i++;
       continue;
     }
     final keyStart = i;
-    var sawEquals = false;
-    while (i < input.length) {
-      final c = input.codeUnitAt(i);
-      if (c == 0x3D) {
-        sawEquals = true;
-        break;
-      }
-      if (c == 0x20 || c == 0x09) break;
-      i++;
-    }
-    final keyEnd = i;
-    final keySpan = input.substring(keyStart, keyEnd);
+    i = _findKeyEnd(input, keyStart);
+    final keySpan = input.substring(keyStart, i);
+    final sawEquals = i < input.length && input.codeUnitAt(i) == 0x3D;
     if (sawEquals) {
       final key = keySpan.toLowerCase();
       i++; // consume '='
       final parsed = _readValue(input, i);
       out[key] = parsed.value;
       i = parsed.end;
-      first = false;
     } else if (first && defaultKey != null && !out.containsKey(defaultKey)) {
       // Leading bare value -> defaultKey="...". Re-read from keyStart
       // and grab everything up to the next whitespace-followed-by-key=value.
       final value = _readBareDefault(input, keyStart);
       out[defaultKey] = value.value;
       i = value.end;
-      first = false;
-    } else {
+    } else if (keySpan.isNotEmpty) {
       // Bare attribute (no `=`): empty value.
-      if (keySpan.isNotEmpty) {
-        out[keySpan.toLowerCase()] = '';
-      }
-      first = false;
+      out[keySpan.toLowerCase()] = '';
     }
+    first = false;
   }
   return out;
+}
+
+bool _isBlank(int c) => c == 0x20 || c == 0x09;
+
+/// Index of the first `=` or whitespace at or after [start], or the end
+/// of [s].
+int _findKeyEnd(String s, int start) {
+  var i = start;
+  while (i < s.length) {
+    final c = s.codeUnitAt(i);
+    if (c == 0x3D || _isBlank(c)) break;
+    i++;
+  }
+  return i;
+}
+
+/// Index of the first non-whitespace at or after [start], or the end
+/// of [s].
+int _skipBlanks(String s, int start) {
+  var i = start;
+  while (i < s.length && _isBlank(s.codeUnitAt(i))) {
+    i++;
+  }
+  return i;
 }
 
 class _ValueRead {
@@ -124,22 +134,11 @@ _ValueRead _readBareDefault(String s, int start) {
   var i = start;
   while (i < s.length) {
     final c = s.codeUnitAt(i);
-    if (c == 0x20 || c == 0x09) {
-      // Peek ahead — does the next non-whitespace token look like
-      // `key=value`? If so, stop. Otherwise consume the whitespace as
-      // part of the bare value.
-      var j = i;
-      while (j < s.length) {
-        final cc = s.codeUnitAt(j);
-        if (cc != 0x20 && cc != 0x09) break;
-        j++;
-      }
-      if (_isKeyEqualsBoundary(s, j)) {
-        return _ValueRead(buffer.toString().trimRight(), i);
-      }
-      buffer.writeCharCode(c);
-      i++;
-      continue;
+    // At whitespace, peek ahead: if the next non-whitespace token looks
+    // like `key=value`, stop. Otherwise consume the whitespace as part
+    // of the bare value.
+    if (_isBlank(c) && _isKeyEqualsBoundary(s, _skipBlanks(s, i))) {
+      return _ValueRead(buffer.toString().trimRight(), i);
     }
     buffer.writeCharCode(c);
     i++;

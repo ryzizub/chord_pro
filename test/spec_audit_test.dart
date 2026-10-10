@@ -19,9 +19,39 @@ import 'package:chord_pro/chord_pro.dart';
 import 'package:test/test.dart';
 
 void main() {
-  // ---------------------------------------------------------------------
-  // §1 Source-level grammar (lexer / scanner)
-  // ---------------------------------------------------------------------
+  _sourceGrammar();
+  _chordGrammar();
+  _preamble();
+  _metadata();
+  _comments();
+  _environments();
+  _conditionalDirectives();
+  _chordDefinitions();
+  _formatting();
+  _imageDirective();
+  _outputLayout();
+  _customExtensions();
+  _pangoMarkup();
+  _chordOverLyricLegacy();
+  _specAmbiguities();
+  _sourceGrammarAdditions();
+  _chordGrammarAdditions();
+  _metadataAdditions();
+  _environmentsAdditions();
+  _chordDefinitionsAdditions();
+  _formattingAdditions();
+  _imageDirectiveAdditions();
+  _outputLayoutAdditions();
+  _customExtensionsAdditions();
+  _pangoMarkupAdditions();
+  _finalPassAdditions();
+  _latestVersionAdditions();
+}
+
+// ---------------------------------------------------------------------
+// §1 Source-level grammar (lexer / scanner)
+// ---------------------------------------------------------------------
+void _sourceGrammar() {
   group('§1 Source-level grammar', () {
     test(
         '[§1.1] file is a sequence of lines (lyrics / directive / comment / blank)',
@@ -101,230 +131,242 @@ void main() {
       expect((tokens.last as TextToken).text, ' b');
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §2 Chord grammar
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §2 Chord grammar
+// ---------------------------------------------------------------------
+void _chordGrammar() {
   group('§2 Chord grammar', () {
-    test('[§2.1a] letter roots A–G accepted', () {
-      for (final r in ['A', 'B', 'C', 'D', 'E', 'F', 'G']) {
-        final c = Chord.tryParse(r);
-        expect(c, isNotNull, reason: 'expected $r to parse');
-        expect(c!.system, ChordSystem.letter);
-        expect(c.root, r);
-      }
-    });
+    _chordRootsAndQualities();
+    _chordSyntax();
+  });
+}
 
-    test('[§2.1b] German `H` (B natural) accepted', () {
-      final c = Chord.tryParse('H');
-      expect(c, isNotNull);
+/// §2.1–§2.6: roots, accidentals, qualities and extensions.
+void _chordRootsAndQualities() {
+  test('[§2.1a] letter roots A–G accepted', () {
+    for (final r in ['A', 'B', 'C', 'D', 'E', 'F', 'G']) {
+      final c = Chord.tryParse(r);
+      expect(c, isNotNull, reason: 'expected $r to parse');
       expect(c!.system, ChordSystem.letter);
-    });
-
-    test('[§2.1c] Roman numerals I..VII and lowercase i..vii accepted', () {
-      for (final r in [
-        'I',
-        'II',
-        'III',
-        'IV',
-        'V',
-        'VI',
-        'VII',
-        'i',
-        'iv',
-        'v',
-      ]) {
-        final c = Chord.tryParse(r);
-        expect(c, isNotNull, reason: 'expected $r to parse');
-        expect(c!.system, ChordSystem.roman);
-      }
-    });
-
-    test('[§2.1d] Nashville digits 1..7 accepted', () {
-      for (final r in ['1', '2', '3', '4', '5', '6', '7']) {
-        final c = Chord.tryParse(r);
-        expect(c, isNotNull, reason: 'expected $r to parse');
-        expect(c!.system, ChordSystem.nashville);
-      }
-    });
-
-    test('[§2.2a] sharp `#` accepted on letter roots', () {
-      expect(Chord.tryParse('F#')?.root, 'F#');
-    });
-
-    test('[§2.2b] flat `b` accepted on letter roots', () {
-      expect(Chord.tryParse('Bb')?.root, 'Bb');
-    });
-
-    test('[§2.2c] Unicode sharp `♯` accepted (per chord page)', () {
-      // ♯ is a non-ASCII accidental glyph the spec page lists.
-      expect(Chord.tryParse('F♯'), isNotNull);
-    });
-
-    test('[§2.2d] Unicode flat `♭` accepted (per chord page)', () {
-      expect(Chord.tryParse('B♭'), isNotNull);
-    });
-
-    test('[§2.3a] minor variants `m`, `mi`, `min`, `-` parsed as quality', () {
-      for (final q in ['m', 'mi', 'min', '-']) {
-        final c = Chord.tryParse('A$q');
-        expect(c, isNotNull, reason: 'A$q');
-        expect(c!.quality, q);
-      }
-    });
-
-    test('[§2.3b] major qualifiers `maj` and `^` parsed', () {
-      expect(Chord.tryParse('Cmaj7')?.quality, 'maj');
-      expect(Chord.tryParse('C^7')?.quality, '^');
-    });
-
-    test('[§2.3c] diminished `dim` and `0` parsed', () {
-      expect(Chord.tryParse('Cdim')?.quality, 'dim');
-      expect(Chord.tryParse('C0')?.quality, '0');
-    });
-
-    test('[§2.3d] half-diminished `h` parsed', () {
-      expect(Chord.tryParse('Ch')?.quality, 'h');
-    });
-
-    test('[§2.3e] augmented `aug` and `+` parsed', () {
-      expect(Chord.tryParse('Caug')?.quality, isNotNull);
-      expect(Chord.tryParse('C+')?.quality, '+');
-    });
-
-    test('[§2.4a] suspensions `sus`, `sus2`, `sus4` parsed as quality', () {
-      for (final q in ['sus', 'sus2', 'sus4']) {
-        final c = Chord.tryParse('A$q');
-        expect(c, isNotNull);
-        expect(c!.quality, q, reason: 'A$q');
-      }
-    });
-
-    test('[§2.4b] additions `add`, `add9` recognisable', () {
-      // `add` is a quality; the trailing number lands in the extension.
-      final c = Chord.tryParse('Cadd9');
-      expect(c, isNotNull);
-      expect(c!.quality, 'add');
-      expect(c.extension, '9');
-    });
-
-    test('[§2.5] numeric extensions 7/9/11/13 captured', () {
-      for (final n in ['7', '9', '11', '13']) {
-        final c = Chord.tryParse('C$n');
-        expect(c, isNotNull, reason: 'C$n');
-        expect(c!.extension, n);
-      }
-    });
-
-    test(
-        '[§2.6] altered intervals `b5`, `#9`, `#11`, `b13` '
-        'survive in the extension', () {
-      // Use a numeric extension before the alteration so the parser
-      // can't mistake the flat/sharp for a root accidental
-      // (`Cb5` would otherwise be Cb chord + 5).
-      for (final ext in ['7b5', '7#9', '7#11', '7b13']) {
-        final c = Chord.tryParse('C$ext');
-        expect(c, isNotNull, reason: 'C$ext');
-        expect(c!.extension, contains(ext.substring(1)));
-      }
-    });
-
-    test('[§2.7] bass slash splits root + bass', () {
-      final c = Chord.tryParse('G/B');
-      expect(c, isNotNull);
-      expect(c!.root, 'G');
-      expect(c.bass?.root, 'B');
-    });
-
-    test('[§2.8a] `[*text]` parses to an AnnotationToken', () {
-      final song = ChordPro.parseSong('[*Coda]');
-      final t = song.sections.first.lines.first.tokens.first;
-      expect(t, isA<AnnotationToken>());
-      expect((t as AnnotationToken).text, 'Coda');
-    });
-
-    test('[§2.9a] whitespace-only `[ ]` parses as annotation (ChordPro 6.020)',
-        () {
-      final song = ChordPro.parseSong('[   ]');
-      final tok = song.sections.first.lines.first.tokens.first;
-      expect(
-        tok,
-        isA<AnnotationToken>(),
-        reason:
-            'spec: pseudo-chord whitespace-only brackets become annotations',
-      );
-    });
-
-    test('[§2.9b] pipe-only `[|]` parses as annotation (ChordPro 6.020)', () {
-      final song = ChordPro.parseSong('[|]');
-      final tok = song.sections.first.lines.first.tokens.first;
-      expect(
-        tok,
-        isA<AnnotationToken>(),
-        reason: 'spec: pipe-only brackets parse as annotations',
-      );
-    });
-
-    test('[§2.9c] empty `[]` is an emergency placeholder (ChordPro 6.080)', () {
-      final song = ChordPro.parseSong('a[]b');
-      // The parser must not drop the bracket: it should yield three
-      // tokens (text, placeholder, text) in some form.
-      final tokens = song.sections.first.lines.first.tokens;
-      expect(tokens, isNotEmpty);
-    });
-
-    test(
-        '[§2.11] strict mode surfaces unknown extensions '
-        'while staying parseable', () {
-      // `tryParse` is intentionally forgiving; unrecognised tail tokens
-      // land in `extension` rather than failing the whole chord.
-      final c = Chord.tryParse('Cwidget');
-      expect(c, isNotNull);
-      expect(c!.extension, 'widget');
-    });
-
-    test('[§2.12a] Pango markup may wrap a chord name', () {
-      // `[<span color="red">Daug</span>]` is a marked-up chord; the
-      // markup is preserved verbatim on the token.
-      final s = ChordPro.parseSong('[<span color="red">Daug</span>]hi');
-      final token =
-          s.sections.first.lines.first.tokens.whereType<ChordToken>().single;
-      expect(token.raw, '<span color="red">Daug</span>');
-    });
-
-    test('[§2.12b] marked-up chords are distinct entries', () {
-      // Per the markup page, a marked-up chord is its own diagram entry,
-      // so two spellings of the same chord must stay distinguishable.
-      final s = ChordPro.parseSong('[D][<span color="red">D</span>]hi');
-      final raws = s.sections.first.lines.first.tokens
-          .whereType<ChordToken>()
-          .map((t) => t.raw)
-          .toList();
-      expect(raws, ['D', '<span color="red">D</span>']);
-    });
-
-    test('[§2.12c] markup must not split the chord name (§13.8)', () {
-      // `[<span>D<sup>aug</sup></span>]` is invalid per the spec. The
-      // parser does not reject it, but it must not silently rejoin the
-      // pieces into a chord named `Daug` either.
-      final s = ChordPro.parseSong('[<span>D<sup>aug</sup></span>]hi');
-      final token =
-          s.sections.first.lines.first.tokens.whereType<ChordToken>().single;
-      expect(token.raw, '<span>D<sup>aug</sup></span>');
-      expect(token.chord?.root, isNot('Daug'));
-    });
-
-    test('[§2.13a] chord precedes the syllable it qualifies', () {
-      final song = ChordPro.parseSong('[G]hello');
-      final tokens = song.sections.first.lines.first.tokens;
-      expect(tokens[0], isA<ChordToken>());
-      expect(tokens[1], isA<TextToken>());
-    });
+      expect(c.root, r);
+    }
   });
 
-  // ---------------------------------------------------------------------
-  // §3 Preamble
-  // ---------------------------------------------------------------------
+  test('[§2.1b] German `H` (B natural) accepted', () {
+    final c = Chord.tryParse('H');
+    expect(c, isNotNull);
+    expect(c!.system, ChordSystem.letter);
+  });
+
+  test('[§2.1c] Roman numerals I..VII and lowercase i..vii accepted', () {
+    for (final r in [
+      'I',
+      'II',
+      'III',
+      'IV',
+      'V',
+      'VI',
+      'VII',
+      'i',
+      'iv',
+      'v',
+    ]) {
+      final c = Chord.tryParse(r);
+      expect(c, isNotNull, reason: 'expected $r to parse');
+      expect(c!.system, ChordSystem.roman);
+    }
+  });
+
+  test('[§2.1d] Nashville digits 1..7 accepted', () {
+    for (final r in ['1', '2', '3', '4', '5', '6', '7']) {
+      final c = Chord.tryParse(r);
+      expect(c, isNotNull, reason: 'expected $r to parse');
+      expect(c!.system, ChordSystem.nashville);
+    }
+  });
+
+  test('[§2.2a] sharp `#` accepted on letter roots', () {
+    expect(Chord.tryParse('F#')?.root, 'F#');
+  });
+
+  test('[§2.2b] flat `b` accepted on letter roots', () {
+    expect(Chord.tryParse('Bb')?.root, 'Bb');
+  });
+
+  test('[§2.2c] Unicode sharp `♯` accepted (per chord page)', () {
+    // ♯ is a non-ASCII accidental glyph the spec page lists.
+    expect(Chord.tryParse('F♯'), isNotNull);
+  });
+
+  test('[§2.2d] Unicode flat `♭` accepted (per chord page)', () {
+    expect(Chord.tryParse('B♭'), isNotNull);
+  });
+
+  test('[§2.3a] minor variants `m`, `mi`, `min`, `-` parsed as quality', () {
+    for (final q in ['m', 'mi', 'min', '-']) {
+      final c = Chord.tryParse('A$q');
+      expect(c, isNotNull, reason: 'A$q');
+      expect(c!.quality, q);
+    }
+  });
+
+  test('[§2.3b] major qualifiers `maj` and `^` parsed', () {
+    expect(Chord.tryParse('Cmaj7')?.quality, 'maj');
+    expect(Chord.tryParse('C^7')?.quality, '^');
+  });
+
+  test('[§2.3c] diminished `dim` and `0` parsed', () {
+    expect(Chord.tryParse('Cdim')?.quality, 'dim');
+    expect(Chord.tryParse('C0')?.quality, '0');
+  });
+
+  test('[§2.3d] half-diminished `h` parsed', () {
+    expect(Chord.tryParse('Ch')?.quality, 'h');
+  });
+
+  test('[§2.3e] augmented `aug` and `+` parsed', () {
+    expect(Chord.tryParse('Caug')?.quality, isNotNull);
+    expect(Chord.tryParse('C+')?.quality, '+');
+  });
+
+  test('[§2.4a] suspensions `sus`, `sus2`, `sus4` parsed as quality', () {
+    for (final q in ['sus', 'sus2', 'sus4']) {
+      final c = Chord.tryParse('A$q');
+      expect(c, isNotNull);
+      expect(c!.quality, q, reason: 'A$q');
+    }
+  });
+
+  test('[§2.4b] additions `add`, `add9` recognisable', () {
+    // `add` is a quality; the trailing number lands in the extension.
+    final c = Chord.tryParse('Cadd9');
+    expect(c, isNotNull);
+    expect(c!.quality, 'add');
+    expect(c.extension, '9');
+  });
+
+  test('[§2.5] numeric extensions 7/9/11/13 captured', () {
+    for (final n in ['7', '9', '11', '13']) {
+      final c = Chord.tryParse('C$n');
+      expect(c, isNotNull, reason: 'C$n');
+      expect(c!.extension, n);
+    }
+  });
+
+  test(
+      '[§2.6] altered intervals `b5`, `#9`, `#11`, `b13` '
+      'survive in the extension', () {
+    // Use a numeric extension before the alteration so the parser
+    // can't mistake the flat/sharp for a root accidental
+    // (`Cb5` would otherwise be Cb chord + 5).
+    for (final ext in ['7b5', '7#9', '7#11', '7b13']) {
+      final c = Chord.tryParse('C$ext');
+      expect(c, isNotNull, reason: 'C$ext');
+      expect(c!.extension, contains(ext.substring(1)));
+    }
+  });
+}
+
+/// §2.7–§2.13: bass notes, bracket forms, markup and placement.
+void _chordSyntax() {
+  test('[§2.7] bass slash splits root + bass', () {
+    final c = Chord.tryParse('G/B');
+    expect(c, isNotNull);
+    expect(c!.root, 'G');
+    expect(c.bass?.root, 'B');
+  });
+
+  test('[§2.8a] `[*text]` parses to an AnnotationToken', () {
+    final song = ChordPro.parseSong('[*Coda]');
+    final t = song.sections.first.lines.first.tokens.first;
+    expect(t, isA<AnnotationToken>());
+    expect((t as AnnotationToken).text, 'Coda');
+  });
+
+  test('[§2.9a] whitespace-only `[ ]` parses as annotation (ChordPro 6.020)',
+      () {
+    final song = ChordPro.parseSong('[   ]');
+    final tok = song.sections.first.lines.first.tokens.first;
+    expect(
+      tok,
+      isA<AnnotationToken>(),
+      reason: 'spec: pseudo-chord whitespace-only brackets become annotations',
+    );
+  });
+
+  test('[§2.9b] pipe-only `[|]` parses as annotation (ChordPro 6.020)', () {
+    final song = ChordPro.parseSong('[|]');
+    final tok = song.sections.first.lines.first.tokens.first;
+    expect(
+      tok,
+      isA<AnnotationToken>(),
+      reason: 'spec: pipe-only brackets parse as annotations',
+    );
+  });
+
+  test('[§2.9c] empty `[]` is an emergency placeholder (ChordPro 6.080)', () {
+    final song = ChordPro.parseSong('a[]b');
+    // The parser must not drop the bracket: it should yield three
+    // tokens (text, placeholder, text) in some form.
+    final tokens = song.sections.first.lines.first.tokens;
+    expect(tokens, isNotEmpty);
+  });
+
+  test(
+      '[§2.11] strict mode surfaces unknown extensions '
+      'while staying parseable', () {
+    // `tryParse` is intentionally forgiving; unrecognised tail tokens
+    // land in `extension` rather than failing the whole chord.
+    final c = Chord.tryParse('Cwidget');
+    expect(c, isNotNull);
+    expect(c!.extension, 'widget');
+  });
+
+  test('[§2.12a] Pango markup may wrap a chord name', () {
+    // `[<span color="red">Daug</span>]` is a marked-up chord; the
+    // markup is preserved verbatim on the token.
+    final s = ChordPro.parseSong('[<span color="red">Daug</span>]hi');
+    final token =
+        s.sections.first.lines.first.tokens.whereType<ChordToken>().single;
+    expect(token.raw, '<span color="red">Daug</span>');
+  });
+
+  test('[§2.12b] marked-up chords are distinct entries', () {
+    // Per the markup page, a marked-up chord is its own diagram entry,
+    // so two spellings of the same chord must stay distinguishable.
+    final s = ChordPro.parseSong('[D][<span color="red">D</span>]hi');
+    final raws = s.sections.first.lines.first.tokens
+        .whereType<ChordToken>()
+        .map((t) => t.raw)
+        .toList();
+    expect(raws, ['D', '<span color="red">D</span>']);
+  });
+
+  test('[§2.12c] markup must not split the chord name (§13.8)', () {
+    // `[<span>D<sup>aug</sup></span>]` is invalid per the spec. The
+    // parser does not reject it, but it must not silently rejoin the
+    // pieces into a chord named `Daug` either.
+    final s = ChordPro.parseSong('[<span>D<sup>aug</sup></span>]hi');
+    final token =
+        s.sections.first.lines.first.tokens.whereType<ChordToken>().single;
+    expect(token.raw, '<span>D<sup>aug</sup></span>');
+    expect(token.chord?.root, isNot('Daug'));
+  });
+
+  test('[§2.13a] chord precedes the syllable it qualifies', () {
+    final song = ChordPro.parseSong('[G]hello');
+    final tokens = song.sections.first.lines.first.tokens;
+    expect(tokens[0], isA<ChordToken>());
+    expect(tokens[1], isA<TextToken>());
+  });
+}
+
+// ---------------------------------------------------------------------
+// §3 Preamble
+// ---------------------------------------------------------------------
+void _preamble() {
   group('§3 Preamble', () {
     test('[§3.1a] `{new_song}` splits into two songs', () {
       final r = ChordPro.parse('{title: A}\n{new_song}\n{title: B}');
@@ -348,10 +390,12 @@ void main() {
       expect(b.tocSuppressed, isTrue);
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §4 Metadata
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §4 Metadata
+// ---------------------------------------------------------------------
+void _metadata() {
   group('§4 Metadata', () {
     test('[§4-meta-rules.a] `{meta: name value}` desugars to typed fields', () {
       final s = ChordPro.parseSong('{meta: title T}\n{meta: artist A}');
@@ -467,10 +511,12 @@ void main() {
       expect(s.metadata.key, 'C');
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §5 Comments
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §5 Comments
+// ---------------------------------------------------------------------
+void _comments() {
   group('§5 Comments', () {
     Line firstCommentLine(Song s) => s.sections
         .expand((sec) => sec.lines)
@@ -505,10 +551,12 @@ void main() {
       expect(firstCommentLine(s).commentStyle, CommentStyle.highlight);
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §6 Environments
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §6 Environments
+// ---------------------------------------------------------------------
+void _environments() {
   group('§6 Environments', () {
     test('[§6.1a] start/end pair groups lines into a section', () {
       final s = ChordPro.parseSong('''
@@ -788,10 +836,12 @@ x
       expect(attrs.y, '20');
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §7 Conditional directives (selectors)
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §7 Conditional directives (selectors)
+// ---------------------------------------------------------------------
+void _conditionalDirectives() {
   group('§7 Conditional directives', () {
     test(
         '[§7.a] positive selector `{title-guitar: …}` only applies when active',
@@ -857,10 +907,12 @@ soft
       expect(v.lines.where((l) => l.kind == LineKind.structured), isNotEmpty);
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §8 Chord definitions
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §8 Chord definitions
+// ---------------------------------------------------------------------
+void _chordDefinitions() {
   group('§8 Chord definitions', () {
     test('[§8.1a] `{define}` parses name + base-fret + frets + fingers', () {
       final s = ChordPro.parseSong(
@@ -973,10 +1025,12 @@ soft
       expect(s.metadata.key, 'D');
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §9 Formatting (fonts / sizes / colours)
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §9 Formatting (fonts / sizes / colours)
+// ---------------------------------------------------------------------
+void _formatting() {
   group('§9 Formatting', () {
     test('[§9.a] `{chordfont}` / `{cf}` populate chord font', () {
       final a = ChordPro.parseSong('{chordfont: Helvetica}');
@@ -1059,10 +1113,12 @@ soft
       }
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §10 Image directive
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §10 Image directive
+// ---------------------------------------------------------------------
+void _imageDirective() {
   group('§10 Image directive', () {
     ImageDirective firstImage(Song s) => s.sections
         .expand((sec) => sec.lines)
@@ -1178,10 +1234,12 @@ soft
       );
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §11 Output / layout / page directives
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §11 Output / layout / page directives
+// ---------------------------------------------------------------------
+void _outputLayout() {
   group('§11 Output / layout', () {
     Line firstBreak(Song s) => s.sections
         .expand((sec) => sec.lines)
@@ -1274,10 +1332,12 @@ soft
       expect(ChordPro.parseSong('{ng}').diagrams?.enabled, isFalse);
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §12 Custom extensions (x_*)
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §12 Custom extensions (x_*)
+// ---------------------------------------------------------------------
+void _customExtensions() {
   group('§12 Custom extensions', () {
     test('[§12.a] `x_*` directive recognised as custom extension', () {
       final s = ChordPro.parseSong('{x_difficulty: hard}');
@@ -1289,10 +1349,12 @@ soft
       expect(s.metadata.other.containsKey('x_difficulty'), isFalse);
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §13 Pango-style markup (preserved verbatim)
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §13 Pango-style markup (preserved verbatim)
+// ---------------------------------------------------------------------
+void _pangoMarkup() {
   group('§13 Pango markup', () {
     test('[§13.a] `<b>` markup preserved verbatim in lyric line', () {
       final s = ChordPro.parseSong('hello <b>bold</b> world');
@@ -1409,10 +1471,12 @@ soft
       expect(tok.raw, '<span color="red">Daug</span>');
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §14 Chord-over-lyric legacy auto-conversion
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §14 Chord-over-lyric legacy auto-conversion
+// ---------------------------------------------------------------------
+void _chordOverLyricLegacy() {
   group('§14 Chord-over-lyric legacy', () {
     // Spec: ChordPro detects chord-over-lyric input and converts internally.
     // README does not claim support; flag as audit gap.
@@ -1436,10 +1500,12 @@ Swing low, sweet chariot,
           '(see README scope)',
     );
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §16 Spec ambiguities — defensive tests so audit catches drift
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §16 Spec ambiguities — defensive tests so audit catches drift
+// ---------------------------------------------------------------------
+void _specAmbiguities() {
   group('§16 Spec ambiguities', () {
     test(
         '[§16.a] `{key: Am}` accepted (mode marker in value) '
@@ -1455,10 +1521,12 @@ Swing low, sweet chariot,
       expect(s.directives.any((d) => d.name == 'pagetype'), isTrue);
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §1 additions — key/value semantics + altbrackets
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §1 additions — key/value semantics + altbrackets
+// ---------------------------------------------------------------------
+void _sourceGrammarAdditions() {
   group('§1 additions (key/value + parser config)', () {
     test('[§1.8a] `toc=no` falsy keyword suppresses ToC', () {
       final r = ChordPro.parse('{ns toc=no}\n{title: B}');
@@ -1495,10 +1563,12 @@ Swing low, sweet chariot,
       expect((tokens.first as ChordToken).raw, 'G');
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §2 additions — chord grammar gaps
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §2 additions — chord grammar gaps
+// ---------------------------------------------------------------------
+void _chordGrammarAdditions() {
   group('§2 additions', () {
     test('[§2.5+] combined `69` extension captured', () {
       final c = Chord.tryParse('C69');
@@ -1528,10 +1598,12 @@ Swing low, sweet chariot,
       },
     );
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §4 additions — reserved metadata + multi-valued rules
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §4 additions — reserved metadata + multi-valued rules
+// ---------------------------------------------------------------------
+void _metadataAdditions() {
   group('§4 additions', () {
     test('[§4-reserved.b] `key.print` is reserved — user `{meta:}` dropped',
         () {
@@ -1592,10 +1664,12 @@ Swing low, sweet chariot,
       expect(s.metadata.sortArtists, ['SA', 'SB']);
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §6 additions — lilypond / textblock corrections
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §6 additions — lilypond / textblock corrections
+// ---------------------------------------------------------------------
+void _environmentsAdditions() {
   group('§6 additions', () {
     test('[§6.5-ly.body] lilypond `scale=` body-prefix line preserved verbatim',
         () {
@@ -1628,10 +1702,12 @@ hi
       expect(tb.textblockAttributes!.height, '120');
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §8 additions — define / chord / transpose
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §8 additions — define / chord / transpose
+// ---------------------------------------------------------------------
+void _chordDefinitionsAdditions() {
   group('§8 additions', () {
     test('[§8.1-base_fret-alias] `base_fret` (underscore) accepted', () {
       // Spec (directives-define/) uses both `base-fret` and
@@ -1678,10 +1754,12 @@ hi
       expect(s.metadata.transposeQualifier, TransposeQualifier.followKey);
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §9 additions — font aliases / description strings
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §9 additions — font aliases / description strings
+// ---------------------------------------------------------------------
+void _formattingAdditions() {
   group('§9 additions', () {
     test('[§9.h] font description string `"family bold 14"` stored', () {
       // The spec accepts a description string as a font value. The
@@ -1701,10 +1779,12 @@ hi
       expect(s.formatting.forTarget('text').font, 'Helvetica-Bold');
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §10 additions — image attribute corrections
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §10 additions — image attribute corrections
+// ---------------------------------------------------------------------
+void _imageDirectiveAdditions() {
   group('§10 additions', () {
     ImageDirective firstImage(Song s) => s.sections
         .expand((sec) => sec.lines)
@@ -1730,10 +1810,12 @@ hi
       expect(img.chord, 'Am');
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §11 additions — column_break short form
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §11 additions — column_break short form
+// ---------------------------------------------------------------------
+void _outputLayoutAdditions() {
   group('§11 additions', () {
     test('[§11-cb-colbreak] `{cb}` short form yields a column break', () {
       // Same short form as `comment_box`; the cheat sheet and
@@ -1746,10 +1828,12 @@ hi
       expect(s.directives.single.name, anyOf('cb', 'column_break'));
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §12 — spec vs implementation deviation
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §12 — spec vs implementation deviation
+// ---------------------------------------------------------------------
+void _customExtensionsAdditions() {
   group('§12 additions', () {
     test(
         '[§12-deviation] `x_*` exposed via Song.customExtensions '
@@ -1758,10 +1842,12 @@ hi
       expect(s.customExtensions.map((d) => d.name), ['x_my']);
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // §13 additions — sym staccato variants preserved
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// §13 additions — sym staccato variants preserved
+// ---------------------------------------------------------------------
+void _pangoMarkupAdditions() {
   group('§13 additions', () {
     test('[§13.5-staccato] `<sym arrow-up-with-staccato/>` preserved verbatim',
         () {
@@ -1779,10 +1865,12 @@ hi
       expect(joined, 'a <sym arrow-down-with-staccato/> b');
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // Final-pass audit additions (deep-review findings)
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// Final-pass audit additions (deep-review findings)
+// ---------------------------------------------------------------------
+void _finalPassAdditions() {
   group('Final-pass additions', () {
     // ---- §1.10 parser.preprocess (configuration-level) ----------------
     test('[§1.10] `parser.preprocess` configurable line rewrites', () {
@@ -1967,10 +2055,12 @@ GABc
       expect(joined, 'x <sym arrow-mute/> y');
     });
   });
+}
 
-  // ---------------------------------------------------------------------
-  // Latest-version (6.100 / 6.101) audit additions
-  // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// Latest-version (6.100 / 6.101) audit additions
+// ---------------------------------------------------------------------
+void _latestVersionAdditions() {
   group('Latest-version additions (6.100 / 6.101)', () {
     test(
         '[§4-key.deprecation] AUDIT: `key_actual` / `key_from` removed in '
