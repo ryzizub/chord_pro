@@ -13,6 +13,7 @@ record, and the old one's status points at it; records are never deleted.
 | [0006](0006-parsing-never-throws.md) | Parsing never throws; problems are coded diagnostics | Accepted |
 | [0007](0007-spec-driven-audit.md) | The spec checklist is ground truth, audited in both directions | Accepted |
 | [0008](0008-config-options-as-parameters.md) | Reference-implementation config options are threaded parameters | Accepted |
+| [0009](0009-assembler-as-dispatch-methods.md) | Assembler as a private stateful class with one method per dispatch branch | Accepted |
 
 Template:
 
