@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   semantic-pull-request:
-    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/semantic_pull_request.yml@v1
+    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/semantic_pull_request.yml@v2
     with:
       # Keep in sync with the scopes listed in CLAUDE.md.
       scopes: |
