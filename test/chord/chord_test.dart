@@ -209,6 +209,14 @@ void main() {
       expect(c.raw, 'A/C#');
     });
 
+    test('keeps an unparseable bass verbatim', () {
+      final c = Chord.tryParse('C/x')!.transpose(2);
+      expect(
+        c,
+        const Chord(system: ChordSystem.letter, root: 'D', raw: 'D/x'),
+      );
+    });
+
     test('leaves Nashville chords unchanged', () {
       final c = Chord.tryParse('4m')!.transpose(3);
       expect(c.raw, '4m');

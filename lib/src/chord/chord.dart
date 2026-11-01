@@ -65,6 +65,12 @@ class Chord {
   /// throws. Unknown bodies are captured via [root] + [raw] so callers
   /// can still display them.
   ///
+  /// Any text after a letter root (and optional quality) is accepted as
+  /// [extension] without validation, so a bracketed word that starts with
+  /// `A`–`H` parses as a chord: `Hello` is root `H` with extension `ello`,
+  /// and [transpose] shifts it like any other chord. A `/` part that does
+  /// not parse leaves [bass] `null` but stays in [raw].
+  ///
   /// When [notesMode] is `true` (mirrors the `settings.notes` config option),
   /// lowercase `a`–`g` are accepted as letter-system root notes in addition to
   /// the standard uppercase `A`–`G`. Transposition of notes-mode roots uses
@@ -140,7 +146,15 @@ class Chord {
       accidentals: accidentals,
       forceCommonKeys: forceCommonKeys,
     );
-    final raw = _renderLetter(newRoot, quality, extension, newBass);
+    // A bass that did not parse is not on [bass]; carry the `/…` part of
+    // [raw] over verbatim so transposition does not drop it.
+    final slash = this.raw.indexOf('/');
+    final bassPart = newBass != null
+        ? '/${newBass.raw}'
+        : slash < 0
+            ? ''
+            : this.raw.substring(slash);
+    final raw = _renderLetter(newRoot, quality, extension, bassPart);
     return Chord(
       system: system,
       root: newRoot,
@@ -234,11 +248,10 @@ String _renderLetter(
   String root,
   String? quality,
   String? extension,
-  Chord? bass,
+  String bassPart,
 ) {
   final q = quality ?? '';
   final ext = extension ?? '';
-  final bassPart = bass == null ? '' : '/${bass.raw}';
   return '$root$q$ext$bassPart';
 }
 
