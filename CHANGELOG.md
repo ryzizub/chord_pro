@@ -1,3 +1,11 @@
+## Unreleased
+
+### Fixed
+
+* `Chord.transpose` (and so `Song.transposed`) keeps a slash bass that does
+  not parse as a note: `C/x` up two semitones is now `D/x` instead of `D`.
+  Spec: <https://www.chordpro.org/chordpro/chordpro-chords/>
+
 ## 0.8.0
 
 Round-tripping release. Text that the parser used to drop on the floor —
