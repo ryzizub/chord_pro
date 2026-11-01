@@ -36,7 +36,8 @@ jobs:
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/dart_package.yml@v1
     with:
       analyze_directories: lib test example
-      min_coverage: 85
+      min_coverage: 100
+      check_ignore: true
       run_bloc_lint: false
 
   license-check:
