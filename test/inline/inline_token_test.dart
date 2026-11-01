@@ -25,5 +25,10 @@ void main() {
       const token = InlineDirectiveToken(directive: directive, span: span);
       expect(token.toString(), 'InlineDirectiveToken({comment: hey})');
     });
+
+    test('ChordRecallToken renders without the span', () {
+      const token = ChordRecallToken(span: span);
+      expect(token.toString(), 'ChordRecallToken()');
+    });
   });
 }

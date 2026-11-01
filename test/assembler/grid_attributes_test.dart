@@ -45,6 +45,16 @@ void main() {
       );
     });
 
+    test('a shape that does not match the grid pattern is ignored', () {
+      const src = '{sog: shape="wide" label="Intro"}\n|C . . .|\n{eog}';
+      final result = ChordPro.parse(src);
+      expect(
+        result.songs.single.sections.single.gridAttributes,
+        const GridAttributes(label: 'Intro'),
+      );
+      expect(result.diagnostics, isEmpty);
+    });
+
     test('gridAttributes only set when kind is grid', () {
       const src = '{start_of_verse}\nLine\n{end_of_verse}';
       expect(ChordPro.parseSong(src).sections.single.gridAttributes, isNull);

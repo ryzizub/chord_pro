@@ -136,6 +136,20 @@ T:Sample
       expect(song.sections.single.customKind, 'intro');
     });
 
+    test('a chorus recall inside a custom environment absorbs its end', () {
+      final result = ChordPro.parse(
+        '{start_of_intro}\nline\n{chorus}\n{end_of_intro}',
+      );
+      expect(
+        result.songs.single.sections.map((s) => s.kind),
+        [SectionKind.custom, SectionKind.chorus],
+      );
+      expect(
+        result.diagnostics.map((d) => (code: d.code, line: d.span.line)),
+        [(code: DiagnosticCode.chorusRecallInsideSection, line: 3)],
+      );
+    });
+
     test('directives and loose content split across multiple sections', () {
       const source = '''
 hello

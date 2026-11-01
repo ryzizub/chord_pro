@@ -228,5 +228,16 @@ void main() {
       final c = Chord.tryParse('F♯m')!.transpose(2);
       expect(c.root, 'G#');
     });
+
+    test('spells a transposed notes-mode root in uppercase', () {
+      final c = Chord.tryParse('b7', notesMode: true)!.transpose(1);
+      expect(c, Chord.tryParse('C7'));
+    });
+  });
+
+  group('Chord.toString', () {
+    test('returns the chord as written', () {
+      expect(Chord.tryParse('F#m7/C#').toString(), 'F#m7/C#');
+    });
   });
 }

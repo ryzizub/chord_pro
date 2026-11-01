@@ -29,5 +29,15 @@ void main() {
       expect(a.code, b.code);
       expect(a, isNot(b));
     });
+
+    test('equal diagnostics share a hash code', () {
+      Diagnostic build() => const Diagnostic(
+            severity: DiagnosticSeverity.warning,
+            code: DiagnosticCode.strayEnd,
+            message: 'stray end',
+            span: SourceSpan(line: 1, column: 1, length: 14),
+          );
+      expect(build().hashCode, build().hashCode);
+    });
   });
 }

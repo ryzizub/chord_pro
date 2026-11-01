@@ -72,5 +72,12 @@ void main() {
     test('shape default key for grid 4x4 form', () {
       expect(parseKv('4x4', defaultKey: 'shape'), {'shape': '4x4'});
     });
+
+    test('key-like words with digits or hyphens stay in the bare default', () {
+      expect(
+        parseKv('Verse a1 part-two', defaultKey: 'label'),
+        {'label': 'Verse a1 part-two'},
+      );
+    });
   });
 }

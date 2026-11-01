@@ -5,7 +5,7 @@ import 'package:chord_pro/src/source/preprocessor.dart';
 
 /// Public entry point for parsing ChordPro documents.
 class ChordPro {
-  const ChordPro._();
+  const ChordPro._(); // coverage:ignore-line
 
   /// Parses [source] and returns every song it contains plus diagnostics.
   ///

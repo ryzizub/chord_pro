@@ -29,6 +29,19 @@ void main() {
       expect(song.chordDefinitions.single.frets, [null, 0, 2, 2, 2, 0]);
     });
 
+    test('ignores a single-value keyword that has no value after it', () {
+      const span = SourceSpan(line: 1, column: 1, length: 10);
+      expect(
+        parseChordDefinition('G frets 3 2 0 0 0 3 base-fret', span: span),
+        const ChordDefinition(
+          name: 'G',
+          frets: [3, 2, 0, 0, 0, 3],
+          raw: 'G frets 3 2 0 0 0 3 base-fret',
+          span: span,
+        ),
+      );
+    });
+
     test('emits a diagnostic for an empty define', () {
       final result = ChordPro.parse('{define:}');
       expect(result.songs.single.chordDefinitions, isEmpty);
