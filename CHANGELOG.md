@@ -404,4 +404,4 @@ Spec-compliance pass against the ChordPro reference parser.
 
 ## 0.1.0
 
-* Intial
+* Initial
