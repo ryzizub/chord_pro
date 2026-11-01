@@ -89,4 +89,8 @@ class DiagramsSetting {
 
   @override
   int get hashCode => Object.hash(enabled, position);
+
+  @override
+  String toString() =>
+      'DiagramsSetting(enabled: $enabled, position: ${position?.name})';
 }

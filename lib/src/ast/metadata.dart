@@ -33,6 +33,34 @@ class Metadata {
     this.other = const {},
   });
 
+  // Copies [source] with [keys] and [transpose] replaced. A generative
+  // constructor must initialize every final field or the library fails
+  // to compile, so a new field cannot be silently dropped from copies.
+  // Reached from outside this library through [MetadataCopy].
+  Metadata._copy(
+    Metadata source, {
+    required this.keys,
+    required this.transpose,
+  })  : titles = source.titles,
+        sortTitles = source.sortTitles,
+        subtitles = source.subtitles,
+        artists = source.artists,
+        sortArtists = source.sortArtists,
+        composers = source.composers,
+        lyricists = source.lyricists,
+        arrangers = source.arrangers,
+        copyright = source.copyright,
+        album = source.album,
+        year = source.year,
+        times = source.times,
+        tempos = source.tempos,
+        duration = source.duration,
+        capo = source.capo,
+        transposeQualifier = source.transposeQualifier,
+        columns = source.columns,
+        tags = source.tags,
+        other = source.other;
+
   /// Titles (`{title}` / `{t}`). A song may declare more than one.
   final List<String> titles;
 
@@ -203,6 +231,18 @@ class Metadata {
         columns,
         mapOfListsHash(other),
       ]);
+}
+
+/// Internal copy helper for [Metadata]; deliberately not exported from
+/// the public barrel.
+extension MetadataCopy on Metadata {
+  /// Returns a copy of this [Metadata] with [keys] and/or [transpose]
+  /// replaced; omitted arguments keep their current value.
+  Metadata copyWith({List<String>? keys, int? transpose}) => Metadata._copy(
+        this,
+        keys: keys ?? this.keys,
+        transpose: transpose ?? this.transpose,
+      );
 }
 
 /// Known metadata directive names plus their short-form aliases.
