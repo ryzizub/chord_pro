@@ -136,5 +136,11 @@ void main() {
         ['x_difficulty'],
       );
     });
+
+    test(r'does not throw on a signed `\u` escape', () {
+      final result = ChordPro.parse(r'Hello \u-041 world');
+      expect(result.diagnostics, isEmpty);
+      expect(result.songs.single.sections.single.lines, hasLength(1));
+    });
   });
 }

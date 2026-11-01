@@ -1,3 +1,11 @@
+## Unreleased
+
+### Fixed
+
+* A `\u` escape is resolved only when exactly four hex digits follow it.
+  `\u-041` no longer makes `ChordPro.parse` throw a `RangeError`, and
+  `\u+041` no longer turns into `A`; both stay literal text.
+
 ## 0.8.0
 
 Round-tripping release. Text that the parser used to drop on the floor —
