@@ -52,5 +52,37 @@ void main() {
     test('no {diagrams} directive -> null', () {
       expect(ChordPro.parseSong('{title: A}').diagrams, isNull);
     });
+
+    group('honours selectors', () {
+      for (final source in [
+        '{diagrams-ukulele: off}',
+        '{g-ukulele: off}',
+        '{ng-ukulele}',
+        '{no_grid-ukulele}',
+      ]) {
+        test('$source without selector ukulele -> null', () {
+          final song = ChordPro.parseSong('$source\nx');
+          expect(song.diagrams, isNull);
+          expect(song.directives.single.selector, 'ukulele');
+        });
+
+        test('$source with selector ukulele -> disabled', () {
+          expect(
+            ChordPro.parseSong(source, selectors: {'ukulele'})
+                .diagrams
+                ?.enabled,
+            isFalse,
+          );
+        });
+      }
+
+      test('suppressed setting does not override an applying one', () {
+        final d = ChordPro.parseSong(
+          '{diagrams: top}\n{diagrams-ukulele: off}',
+        ).diagrams;
+        expect(d?.enabled, isTrue);
+        expect(d?.position, DiagramsPosition.top);
+      });
+    });
   });
 }

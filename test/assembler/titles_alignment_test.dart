@@ -41,5 +41,19 @@ void main() {
     test('no {titles} directive -> null', () {
       expect(ChordPro.parseSong('{title: A}').titlesAlignment, isNull);
     });
+
+    test('{titles-x: center} without selector x -> null', () {
+      final song = ChordPro.parseSong('{titles-x: center}');
+      expect(song.titlesAlignment, isNull);
+      expect(song.directives.single.selector, 'x');
+    });
+
+    test('{titles-x: center} with selector x -> center', () {
+      expect(
+        ChordPro.parseSong('{titles-x: center}', selectors: {'x'})
+            .titlesAlignment,
+        TitlesAlignment.center,
+      );
+    });
   });
 }
