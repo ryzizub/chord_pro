@@ -127,6 +127,8 @@ String _resolveBraceUnicode(String s) {
   });
 }
 
+final RegExp _fourHexDigits = RegExp(r'^[0-9a-f]{4}$', caseSensitive: false);
+
 String _resolveFixedUnicode(String s) {
   if (s.length < 6) return s;
   final out = StringBuffer();
@@ -135,9 +137,11 @@ String _resolveFixedUnicode(String s) {
     final ch = s.codeUnitAt(i);
     if (ch == 0x5C && i + 5 < s.length && s.codeUnitAt(i + 1) == 0x75) {
       final hex = s.substring(i + 2, i + 6);
-      final code = int.tryParse(hex, radix: 16);
-      if (code != null) {
-        out.writeCharCode(code);
+      // Only exactly four hex digits form an escape. `int.tryParse` alone
+      // would also accept a sign (`\u-041`), which yields a negative code
+      // point and makes `writeCharCode` throw.
+      if (_fourHexDigits.hasMatch(hex)) {
+        out.writeCharCode(int.parse(hex, radix: 16));
         i += 6;
         continue;
       }

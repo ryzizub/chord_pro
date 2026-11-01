@@ -69,5 +69,15 @@ void main() {
       final lines = scan(r'oops \uZZZZ');
       expect(lines.single.text, r'oops \uZZZZ');
     });
+
+    test(r'leaves a signed `\u` escape alone instead of throwing', () {
+      final lines = scan(r'Hello \u-041 world');
+      expect(lines.single.text, r'Hello \u-041 world');
+    });
+
+    test(r'does not resolve a plus-signed `\u` escape', () {
+      final lines = scan(r'Hello \u+041 world');
+      expect(lines.single.text, r'Hello \u+041 world');
+    });
   });
 }
