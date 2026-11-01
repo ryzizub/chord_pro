@@ -12,3 +12,6 @@ coverage/
 .claude/
 docs/
 CLAUDE.md
+
+# Tests; not part of the package.
+test/
