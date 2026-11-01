@@ -375,27 +375,34 @@ class _Assembler {
   }
 
   /// Applies a song-level setting directive. Returns whether [directive]
-  /// was one.
+  /// was one, whether or not its selector applies.
   bool _applySongSetting(Directive directive) {
     final name = directive.name;
+    // Settings are conditional like every other directive: "all
+    // directives can be conditionally selected"
+    // (https://www.chordpro.org/chordpro/chordpro-configuration-selectors/).
+    // A suppressed setting is still consumed here, and it already sits in
+    // the directive stream.
+    final applies = _selectorApplies(directive, activeSelectors);
+
     // Title-block alignment hint (legacy `{titles}` directive,
     // Song.pm:2204).
     if (name == 'titles' && directive.value != null) {
-      titlesAlignment = parseTitlesAlignment(directive.value!);
+      if (applies) titlesAlignment = parseTitlesAlignment(directive.value!);
       return true;
     }
 
     // Diagrams setting. `{g}` is the spec-listed shorthand for
     // `{diagrams}` per Song.pm:1339.
     if (name == 'diagrams' || name == 'g') {
-      diagrams = DiagramsSetting.fromValue(directive.value);
+      if (applies) diagrams = DiagramsSetting.fromValue(directive.value);
       return true;
     }
 
     // Legacy `{no_grid}` / `{ng}` — obsolete since 6.020 but still
     // accepted; equivalent to `{diagrams: off}` (Song.pm:1339).
     if (name == 'no_grid' || name == 'ng') {
-      diagrams = const DiagramsSetting(enabled: false);
+      if (applies) diagrams = const DiagramsSetting(enabled: false);
       return true;
     }
     return false;

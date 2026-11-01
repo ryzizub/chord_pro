@@ -1,3 +1,12 @@
+## Unreleased
+
+### Fixed
+
+* `{diagrams}`, `{g}`, `{no_grid}`, `{ng}` and `{titles}` now honour
+  selectors: `{diagrams-ukulele: off}` only changes `Song.diagrams` when the
+  `ukulele` selector is active. The directive stays in `Song.directives`.
+  Spec: <https://www.chordpro.org/chordpro/chordpro-configuration-selectors/>
+
 ## 0.8.0
 
 Round-tripping release. Text that the parser used to drop on the floor —
