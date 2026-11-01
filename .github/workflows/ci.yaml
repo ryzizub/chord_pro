@@ -39,6 +39,25 @@ jobs:
       min_coverage: 85
       run_bloc_lint: false
 
+  # The SDK floor from pubspec.yaml. Not via dart_package.yml: it installs
+  # very_good_cli, which needs a newer SDK than the floor. Formatting is
+  # left to the stable build.
+  build-sdk-floor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.5.0
+      - run: dart pub get
+      - run: dart analyze --fatal-infos --fatal-warnings lib test example
+      - run: dart test --test-randomize-ordering-seed random
+
+  pana:
+    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/pana.yml@v1
+    with:
+      min_score: 160
+
   license-check:
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/license_check.yml@v1
 
