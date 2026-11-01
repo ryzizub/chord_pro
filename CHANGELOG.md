@@ -1,3 +1,11 @@
+## Unreleased
+
+### Fixed
+
+* `DiagramsSetting.toString` now shows the setting
+  (`DiagramsSetting(enabled: true, position: top)`) instead of
+  `Instance of 'DiagramsSetting'`.
+
 ## 0.8.0
 
 Round-tripping release. Text that the parser used to drop on the floor —

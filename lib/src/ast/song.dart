@@ -91,6 +91,12 @@ class Song {
   /// accidentals: AccidentalPreference.flats)` respells the song in flats
   /// without changing its pitch, and `transposed(12)` respells at the
   /// same pitch class.
+  ///
+  /// Only the typed views are transposed: [directives] is carried over
+  /// unchanged, so a `{key: G}` directive in that stream keeps its
+  /// source value and can disagree with the transposed [Metadata.keys]
+  /// (and `{transpose}` with [Metadata.transpose], which is reset to
+  /// `0`). Read the key from [metadata], not from [directives].
   Song transposed(
     int semitones, {
     AccidentalPreference accidentals = AccidentalPreference.sharps,
@@ -134,28 +140,9 @@ class Song {
         .toList(growable: false);
 
     return Song(
-      metadata: Metadata(
-        titles: metadata.titles,
-        sortTitles: metadata.sortTitles,
-        subtitles: metadata.subtitles,
-        artists: metadata.artists,
-        sortArtists: metadata.sortArtists,
-        composers: metadata.composers,
-        lyricists: metadata.lyricists,
-        arrangers: metadata.arrangers,
-        copyright: metadata.copyright,
-        album: metadata.album,
-        year: metadata.year,
+      metadata: metadata.copyWith(
         keys: List.unmodifiable(newKeys),
-        times: metadata.times,
-        tempos: metadata.tempos,
-        duration: metadata.duration,
-        capo: metadata.capo,
         transpose: 0,
-        transposeQualifier: metadata.transposeQualifier,
-        columns: metadata.columns,
-        tags: metadata.tags,
-        other: metadata.other,
       ),
       directives: directives,
       sections: List.unmodifiable(newSections),
